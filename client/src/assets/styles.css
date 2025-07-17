@@ -1,0 +1,144 @@
+/* CSS chung cho ứng dụng */
+:root {
+  /* Light mode colors */
+  --background: 0 0% 100%; /* Trắng thuần */
+  --foreground: 222.2 84% 4.9%; /* Xám đậm gần đen */
+  --card: 0 0% 100%; /* Nền card trắng */
+  --card-foreground: 222.2 84% 4.9%; /* Text trên card */
+  --popover: 0 0% 100%; /* Nền popover trắng */
+  --popover-foreground: 222.2 84% 4.9%; /* Text trên popover */
+  --primary: 222.2 47.4% 11.2%; /* Màu primary xám đậm */
+  --primary-foreground: 210 40% 98%; /* Text trên primary */
+  --secondary: 210 40% 96%; /* Màu secondary xám nhạt */
+  --secondary-foreground: 222.2 47.4% 11.2%; /* Text trên secondary */
+  --muted: 210 40% 96%; /* Màu muted giống secondary */
+  --muted-foreground: 215.4 16.3% 46.9%; /* Text muted */
+  --accent: 210 40% 96%; /* Màu accent giống secondary */
+  --accent-foreground: 222.2 47.4% 11.2%; /* Text trên accent */
+  --destructive: 0 84.2% 60.2%; /* Màu đỏ cho destructive */
+  --destructive-foreground: 210 40% 98%; /* Text trên destructive */
+  --border: 214.3 31.8% 91.4%; /* Màu viền xám nhạt */
+  --input: 214.3 31.8% 91.4%; /* Màu input giống border */
+  --ring: 222.2 84% 4.9%; /* Màu focus ring */
+  --radius: 0.5rem; /* Border radius mặc định 8px */
+
+  /* Chart colors cho data visualization */
+  --chart-1: 12 76% 61%; /* Cam (#f97316) */
+  --chart-2: 173 58% 39%; /* Xanh lục (#059669) */
+  --chart-3: 197 37% 24%; /* Xanh đậm (#0f766e) */
+  --chart-4: 43 74% 66%; /* Vàng (#eab308) */
+  --chart-5: 27 87% 67%; /* Cam đỏ (#ea580c) */
+}
+
+/* Dark mode colors */
+.dark {
+  --background: 222.2 84% 4.9%; /* Nền tối */
+  --foreground: 210 40% 98%; /* Text sáng */
+  --card: 222.2 84% 4.9%; /* Card nền tối */
+  --card-foreground: 210 40% 98%; /* Text trên card sáng */
+  --popover: 222.2 84% 4.9%; /* Popover nền tối */
+  --popover-foreground: 210 40% 98%; /* Text trên popover sáng */
+  --primary: 210 40% 98%; /* Primary sáng trong dark mode */
+  --primary-foreground: 222.2 47.4% 11.2%; /* Text tối trên primary */
+  --secondary: 217.2 32.6% 17.5%; /* Secondary tối */
+  --secondary-foreground: 210 40% 98%; /* Text sáng trên secondary */
+  --muted: 217.2 32.6% 17.5%; /* Muted giống secondary */
+  --muted-foreground: 215 20.2% 65.1%; /* Text muted sáng hơn */
+  --accent: 217.2 32.6% 17.5%; /* Accent giống secondary */
+  --accent-foreground: 210 40% 98%; /* Text sáng trên accent */
+  --destructive: 0 62.8% 30.6%; /* Đỏ đậm hơn trong dark mode */
+  --destructive-foreground: 210 40% 98%; /* Text sáng trên destructive */
+  --border: 217.2 32.6% 17.5%; /* Viền tối */
+  --input: 217.2 32.6% 17.5%; /* Input nền tối */
+  --ring: 212.7 26.8% 83.9%; /* Focus ring sáng */
+  
+  /* Chart colors cho dark mode */
+  --chart-1: 220 70% 50%; /* Xanh (#3b82f6) */
+  --chart-2: 160 60% 45%; /* Xanh lục (#10b981) */
+  --chart-3: 30 80% 55%; /* Cam (#f59e0b) */
+  --chart-4: 280 65% 60%; /* Tím (#a855f7) */
+  --chart-5: 340 75% 55%; /* Hồng (#ec4899) */
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0; 
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+  background: #000000;
+}
+
+/* Additional animations */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Animation delay utilities */
+.delay-1000 {
+  animation-delay: 1s;
+}
+
+.delay-2000 {
+  animation-delay: 2s;
+}
+
+.delay-100 {
+  animation-delay: 0.1s;
+}
+
+.delay-200 {
+  animation-delay: 0.2s;
+}
+
+/* Hover utilities */
+.hover-scale:hover {
+  transform: scale(1.2);
+} 
