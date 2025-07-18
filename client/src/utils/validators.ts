@@ -114,7 +114,7 @@ export const validate_message = (message: string): void => {
   }
   
   // Trích xuất URL trước khi kiểm tra
-  const { processed_message, urls } = extract_urls(message);
+  const { processed_message, } = extract_urls(message);
   
   // Kiểm tra ký tự lặp lại quá nhiều
   if (has_excessive_repeats(processed_message)) {
@@ -167,7 +167,7 @@ export const sanitize_message = (message: string): string => {
   let cleaned = processed_message.replace(/[^\p{L}\p{N}\p{P}\p{Zs}\p{So}\p{Mn}\p{Mc}]/gu, '');
   
   // Xử lý ký tự lặp lại
-  cleaned = cleaned.replace(/(.)\1{5,}/gu, (match, char) => char.repeat(5));
+  cleaned = cleaned.replace(/(.)\1{5,}/gu, (_, char) => char.repeat(5));
   
   // Khôi phục URL
   sanitized = restore_urls(cleaned, urls);
