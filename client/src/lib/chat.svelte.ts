@@ -9,6 +9,20 @@ export interface Message {
   reactions?: string[];
 }
 
+interface MatchedData {
+  conversation_id: string;
+  partner_id: string;
+}
+
+interface SocketError {
+  message: string;
+}
+
+interface UserStats {
+  online_users: number;
+  waiting_users: number;
+}
+
 export class ChatState {
   // State using runes
   socket_id = $state('');
@@ -60,8 +74,12 @@ export class ChatState {
         validate_message(content);
         const sanitized_content = sanitize_message(content);
         socket.emit('send-message', { content: sanitized_content });
-      } catch (error: any) {
-        this.showToast(error.message || 'Tin nhắn không hợp lệ');
+      } catch (error) {
+        if (error instanceof Error) {
+          this.showToast(error.message);
+        } else {
+          this.showToast('Tin nhắn không hợp lệ');
+        }
       }
     }
   };
@@ -73,7 +91,8 @@ export class ChatState {
   addReaction = (msg: Message, emoji: string) => {
     const msgIndex = this.messages.indexOf(msg);
     if (msgIndex !== -1) {
-      const currentMsg = this.messages[msgIndex];
+      // Create a shallow copy of the message to trigger reactivity
+      const currentMsg = { ...this.messages[msgIndex] };
       if (!currentMsg.reactions) {
         currentMsg.reactions = [];
       }
@@ -83,6 +102,8 @@ export class ChatState {
       } else {
         currentMsg.reactions = [...currentMsg.reactions, emoji];
       }
+      
+      // Reassign to array to trigger update
       this.messages[msgIndex] = currentMsg;
       
       socket.emit('add-reaction', { 
@@ -122,7 +143,7 @@ export class ChatState {
       this.messages = [];
     });
 
-    socket.on('matched', (data: any) => {
+    socket.on('matched', (data: MatchedData) => {
       this.conversation_id = data.conversation_id;
       this.partner_id = data.partner_id;
       this.is_waiting = false;
@@ -165,7 +186,8 @@ export class ChatState {
     socket.on('receive-reaction', (data: {message_index: number, emoji: string}) => {
       const { message_index, emoji } = data;
       if (message_index >= 0 && message_index < this.messages.length) {
-        const msg = this.messages[message_index];
+        // Clone message for reactivity
+        const msg = { ...this.messages[message_index] };
         if (!msg.reactions) msg.reactions = [];
         
         if (msg.reactions.includes(emoji)) {
@@ -181,11 +203,11 @@ export class ChatState {
       }
     });
 
-    socket.on('error', (error: any) => {
+    socket.on('error', (error: SocketError) => {
       this.showToast(error.message || 'Có lỗi xảy ra');
     });
 
-    socket.on('user-stats', (stats: any) => {
+    socket.on('user-stats', (stats: UserStats) => {
       this.online_users = stats.online_users || 0;
       this.waiting_users = stats.waiting_users || 0;
     });

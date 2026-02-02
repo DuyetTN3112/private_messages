@@ -9,7 +9,7 @@
     background: linear-gradient(135deg, #ec4899, #ef4444);
     border-radius: 9999px;
     display: flex;
-    items-center: center;
+    align-items: center;
     justify-content: center;
     font-size: 0.75rem;
     font-weight: 700;

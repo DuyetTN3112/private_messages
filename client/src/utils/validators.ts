@@ -144,7 +144,7 @@ export const is_valid_message = (message: string): boolean => {
   try {
     validate_message(message);
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 };
