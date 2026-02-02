@@ -1,0 +1,208 @@
+import { socket } from '../socket';
+import { tick } from 'svelte';
+import { validate_message, sanitize_message } from '../utils/validators';
+
+export interface Message {
+  sender_id: string;
+  content: string;
+  created_at?: string;
+  reactions?: string[];
+}
+
+export class ChatState {
+  // State using runes
+  socket_id = $state('');
+  is_connected = $state(false);
+  is_waiting = $state(true);
+  is_matched = $state(false);
+  partner_disconnected = $state(false);
+  messages = $state<Message[]>([]);
+  conversation_id = $state('');
+  partner_id = $state('');
+
+  // UI state
+  toast_message = $state('');
+  show_toast = $state(false);
+  online_users = $state(0);
+  waiting_users = $state(0);
+  hoveredMessage = $state<Message | null>(null);
+  reactionPickerMessage = $state<Message | null>(null);
+
+  message_container: HTMLElement | null = null;
+  quickReactions = ['❤️', '👍', '😂', '😮', '🔥', '👏', '🎉', '💯'];
+
+  constructor() {
+    this.initSocket();
+  }
+
+  setContainer(el: HTMLElement) {
+    this.message_container = el;
+  }
+
+  showToast(msg: string, duration = 3000) {
+    this.toast_message = msg;
+    this.show_toast = true;
+    setTimeout(() => {
+      this.show_toast = false;
+    }, duration);
+  }
+
+  async scrollToBottom() {
+    await tick();
+    if (this.message_container) {
+      this.message_container.scrollTop = this.message_container.scrollHeight;
+    }
+  }
+
+  send_message = (content: string) => {
+    if (content && this.is_connected) {
+      try {
+        validate_message(content);
+        const sanitized_content = sanitize_message(content);
+        socket.emit('send-message', { content: sanitized_content });
+      } catch (error: any) {
+        this.showToast(error.message || 'Tin nhắn không hợp lệ');
+      }
+    }
+  };
+
+  showReactionPicker = (msg: Message) => {
+    this.reactionPickerMessage = msg;
+  };
+
+  addReaction = (msg: Message, emoji: string) => {
+    const msgIndex = this.messages.indexOf(msg);
+    if (msgIndex !== -1) {
+      const currentMsg = this.messages[msgIndex];
+      if (!currentMsg.reactions) {
+        currentMsg.reactions = [];
+      }
+      
+      if (currentMsg.reactions.includes(emoji)) {
+        currentMsg.reactions = currentMsg.reactions.filter((r) => r !== emoji);
+      } else {
+        currentMsg.reactions = [...currentMsg.reactions, emoji];
+      }
+      this.messages[msgIndex] = currentMsg;
+      
+      socket.emit('add-reaction', { 
+        conversation_id: this.conversation_id,
+        message_index: msgIndex,
+        emoji
+      });
+      
+      this.showToast(`Đã thả cảm xúc ${emoji}`, 2000);
+    }
+    this.reactionPickerMessage = null;
+  };
+
+  find_new_partner = () => {
+    socket.emit('find-new-partner');
+    this.is_waiting = true;
+    this.partner_disconnected = false;
+  };
+
+  private initSocket() {
+    socket.on('connect', () => {
+      this.is_connected = true;
+      this.socket_id = socket.id!;
+    });
+
+    socket.on('disconnect', () => {
+      this.is_connected = false;
+      this.is_matched = false;
+      this.is_waiting = true;
+      this.messages = [];
+    });
+
+    socket.on('waiting', () => {
+      this.is_waiting = true;
+      this.is_matched = false;
+      this.partner_disconnected = false;
+      this.messages = [];
+    });
+
+    socket.on('matched', (data: any) => {
+      this.conversation_id = data.conversation_id;
+      this.partner_id = data.partner_id;
+      this.is_waiting = false;
+      this.is_matched = true;
+      this.partner_disconnected = false;
+      this.messages = [];
+      this.showToast('Đã kết nối với người trò chuyện!');
+    });
+
+    socket.on('partner-disconnected', () => {
+      this.partner_disconnected = true;
+      this.is_matched = false;
+      setTimeout(() => {
+        if (this.partner_disconnected) {
+          this.find_new_partner();
+        }
+      }, 3000);
+    });
+
+    socket.on('conversation-timeout', () => {
+      this.partner_disconnected = true;
+      this.is_matched = false;
+      this.messages = [];
+      this.showToast('Cuộc trò chuyện đã kết thúc do không hoạt động trong 1 phút');
+      setTimeout(() => {
+        this.find_new_partner();
+      }, 3000);
+    });
+
+    socket.on('receive-message', (msg: Message) => {
+      this.messages = [...this.messages, {
+        sender_id: msg.sender_id,
+        content: msg.content,
+        created_at: msg.created_at,
+        reactions: []
+      }];
+      this.scrollToBottom();
+    });
+
+    socket.on('receive-reaction', (data: {message_index: number, emoji: string}) => {
+      const { message_index, emoji } = data;
+      if (message_index >= 0 && message_index < this.messages.length) {
+        const msg = this.messages[message_index];
+        if (!msg.reactions) msg.reactions = [];
+        
+        if (msg.reactions.includes(emoji)) {
+          msg.reactions = msg.reactions.filter(r => r !== emoji);
+        } else {
+          msg.reactions = [...msg.reactions, emoji];
+        }
+        this.messages[message_index] = msg;
+
+        if (msg.sender_id === this.socket_id) {
+          this.showToast(`Có người đã thả cảm xúc ${emoji}`, 2000);
+        }
+      }
+    });
+
+    socket.on('error', (error: any) => {
+      this.showToast(error.message || 'Có lỗi xảy ra');
+    });
+
+    socket.on('user-stats', (stats: any) => {
+      this.online_users = stats.online_users || 0;
+      this.waiting_users = stats.waiting_users || 0;
+    });
+  }
+
+  cleanup() {
+    socket.off('connect');
+    socket.off('disconnect');
+    socket.off('waiting');
+    socket.off('matched');
+    socket.off('partner-disconnected');
+    socket.off('conversation-timeout');
+    socket.off('receive-message');
+    socket.off('receive-reaction');
+    socket.off('error');
+    socket.off('user-stats');
+  }
+}
+
+export const chatState = new ChatState();
