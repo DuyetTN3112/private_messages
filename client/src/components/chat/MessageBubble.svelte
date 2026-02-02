@@ -45,11 +45,7 @@
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         {@html formattedContent}
         
-        {#if msg.reactions && msg.reactions.length > 0}
-          <span class="inline-reactions">
-            {msg.reactions.join(' ')}
-          </span>
-        {/if}
+
       </p>
       
       <button 

@@ -173,9 +173,9 @@ export class ChatState {
       }, 3000);
     });
 
-    socket.on('receive-message', (msg: Message) => {
+    socket.on('receive-message', (msg: { sender?: string; sender_id?: string; content: string; created_at: string }) => {
       this.messages = [...this.messages, {
-        sender_id: msg.sender_id,
+        sender_id: msg.sender || msg.sender_id || '',
         content: msg.content,
         created_at: msg.created_at,
         reactions: []
@@ -183,8 +183,15 @@ export class ChatState {
       this.scrollToBottom();
     });
 
-    socket.on('receive-reaction', (data: {message_index: number, emoji: string}) => {
-      const { message_index, emoji } = data;
+    socket.on('receive-reaction', (data: {message_index: number, emoji: string, sender_id: string}) => {
+      const { message_index, emoji, sender_id } = data;
+      
+      // If I sent the reaction, my optimistic UI already handled it.
+      // Ignoring the server echo prevents double-toggling.
+      if (sender_id === this.socket_id) {
+        return;
+      }
+
       if (message_index >= 0 && message_index < this.messages.length) {
         // Clone message for reactivity
         const msg = { ...this.messages[message_index] };
@@ -197,7 +204,7 @@ export class ChatState {
         }
         this.messages[message_index] = msg;
 
-        if (msg.sender_id === this.socket_id) {
+        if (sender_id !== this.socket_id) {
           this.showToast(`Có người đã thả cảm xúc ${emoji}`, 2000);
         }
       }
