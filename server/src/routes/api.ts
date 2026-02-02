@@ -4,7 +4,7 @@ import { logger } from '../utils/logger';
 const router = Router();
 
 // API route kiểm tra trạng thái server
-router.get('/status', (req: Request, res: Response) => {
+router.get('/status', (_req: Request, res: Response): void => {
   res.json({
     status: 'online',
     timestamp: new Date(),
@@ -13,12 +13,13 @@ router.get('/status', (req: Request, res: Response) => {
 });
 
 // API route lấy thông tin người dùng hiện tại
-router.get('/stats', (req: Request, res: Response) => {
+router.get('/stats', (req: Request, res: Response): void => {
   const io = req.app.get('io');
   
   if (!io) {
     logger.error('Socket.IO server chưa được khởi tạo');
-    return res.status(500).json({ error: 'Lỗi nội bộ server' });
+    res.status(500).json({ error: 'Lỗi nội bộ server' });
+    return;
   }
 
   // Lấy số lượng người dùng từ io

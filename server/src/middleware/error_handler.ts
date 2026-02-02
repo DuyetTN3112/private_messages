@@ -18,7 +18,7 @@ export class ApiError extends Error {
 /**
  * Middleware bắt các lỗi 404 (Not Found)
  */
-export const not_found_handler = (req: Request, res: Response, next: NextFunction) => {
+export const not_found_handler = (req: Request, _res: Response, next: NextFunction): void => {
   const error = new ApiError(`Không tìm thấy đường dẫn: ${req.originalUrl}`, 404);
   next(error);
 };
@@ -26,7 +26,7 @@ export const not_found_handler = (req: Request, res: Response, next: NextFunctio
 /**
  * Middleware xử lý các lỗi chung trong ứng dụng
  */
-export const error_handler = (err: Error | ApiError, req: Request, res: Response, next: NextFunction) => {
+export const error_handler = (err: Error | ApiError, _req: Request, res: Response, _next: NextFunction): void => {
   // Lấy status code nếu có, mặc định là 500
   const status_code = (err as ApiError).status_code || 500;
   
@@ -48,12 +48,12 @@ export const error_handler = (err: Error | ApiError, req: Request, res: Response
  */
 export const unhandled_rejection_handler = (
   reason: Error,
-  promise: Promise<any>
-) => {
+  _promise: Promise<any>
+): void => {
   logger.error('Unhandled Rejection at Promise', reason);
   // Thông thường ở đây nên kết thúc process với exit code 1
   // Nhưng trong môi trường production, có thể chỉ log và tiếp tục
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env['NODE_ENV'] !== 'production') {
     console.error('Shutting down due to unhandled promise rejection');
     process.exit(1);
   }

@@ -94,8 +94,8 @@ export const should_rate_limit_message = (socket_id: string): boolean => {
     ? client_data.message_timestamps[client_data.message_timestamps.length - 1]
     : 0;
     
-  // Kiểm tra tần suất gửi tin nhắn quá nhanh
-  if (now - last_message_time < MIN_MESSAGE_INTERVAL) {
+  // Check send frequency
+  if (last_message_time !== undefined && now - last_message_time < MIN_MESSAGE_INTERVAL) {
     // Block socket vì gửi tin nhắn quá nhanh
     client_data.blocked_until = now + BLOCK_DURATION;
     logger.warn(`Socket rate limit: Client ${socket_id} is sending messages too fast. Blocked for ${BLOCK_DURATION/1000}s`);
@@ -142,7 +142,7 @@ setInterval(() => {
   Object.keys(socket_store).forEach(socket_id => {
     const client_data = socket_store[socket_id];
     // Xóa socket không hoạt động trong thời gian dài
-    if (now - client_data.last_reset > CLEANUP_INTERVAL && 
+    if (client_data && now - client_data.last_reset > CLEANUP_INTERVAL && 
         (!client_data.blocked_until || client_data.blocked_until < now)) {
       delete socket_store[socket_id];
     }

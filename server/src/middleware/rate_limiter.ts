@@ -111,6 +111,7 @@ setInterval(() => {
   const now = Date.now();
   Object.keys(ip_store).forEach(ip => {
     const client_data = ip_store[ip];
+    if (!client_data) return;
     // Xóa client không còn bị chặn và đã hết thời gian reset
     if ((!client_data.blocked_until || client_data.blocked_until < now) && client_data.reset_time < now) {
       delete ip_store[ip];

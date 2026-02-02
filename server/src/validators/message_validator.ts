@@ -49,11 +49,13 @@ const has_repeated_words = (text: string, max_repeats: number = 3): boolean => {
   let repeat_count = 1;
   
   for (let i = 0; i < words.length; i++) {
-    if (words[i] === current_word) {
+    const word = words[i];
+    if (!word) continue;
+    if (word === current_word) {
       repeat_count++;
       if (repeat_count > max_repeats) return true;
     } else {
-      current_word = words[i];
+      current_word = word;
       repeat_count = 1;
     }
   }
@@ -90,8 +92,10 @@ const extract_urls = (message: string): { processed_message: string, urls: strin
 const restore_urls = (processed_message: string, urls: string[]): string => {
   let restored = processed_message;
   for (let i = 0; i < urls.length; i++) {
-    restored = restored.replace(`[URL_${i}]`, urls[i]);
-    console.log(`URL đã được khôi phục: ${urls[i]}`);
+    const url = urls[i];
+    if (!url) continue;
+    restored = restored.replace(`[URL_${i}]`, url);
+    console.log(`URL đã được khôi phục: ${url}`);
   }
   
   if (urls.length > 0) {
@@ -123,7 +127,7 @@ export const validate_message = (message: string): void => {
   }
   
   // Trích xuất URL trước khi kiểm tra
-  const { processed_message, urls } = extract_urls(message);
+  const { processed_message, _urls } = extract_urls(message);
   
   // Kiểm tra ký tự lặp lại quá nhiều
   if (has_excessive_repeats(processed_message)) {
@@ -179,7 +183,7 @@ export const sanitize_message = (message: string): string => {
   let cleaned = processed_message.replace(/[^\p{L}\p{N}\p{P}\p{Zs}\p{So}\p{Mn}\p{Mc}]/gu, '');
   
   // Xử lý ký tự lặp lại
-  cleaned = cleaned.replace(/(.)\1{5,}/gu, (match, char) => char.repeat(5));
+  cleaned = cleaned.replace(/(.)\1{5,}/gu, (_match, char) => char.repeat(5));
   
   // Khôi phục URL
   sanitized = restore_urls(cleaned, urls);

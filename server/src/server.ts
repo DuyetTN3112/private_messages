@@ -1,6 +1,5 @@
 import express from 'express';
 import http from 'http';
-import mongoose from 'mongoose';
 import cors from 'cors';
 import { Server } from 'socket.io';
 import { setup_socket_server } from './controllers/socket';
@@ -9,12 +8,10 @@ import { error_handler } from './middleware/error_handler';
 import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { setup_conversation_monitor } from './utils/conversation_monitor';
+import { storageService } from './services/storage/repository';
 
 // Cấu hình dotenv
 dotenv.config();
-
-// Cấu hình MongoDB
-mongoose.set('strictQuery', false);
 
 // Tạo Express app
 const app = express();
@@ -61,26 +58,24 @@ setup_socket_server(io, socketStore);
 // Khởi động monitor cho các cuộc trò chuyện không hoạt động
 setup_conversation_monitor(io);
 
-// Kết nối MongoDB và khởi động server
-const SERVER_PORT = process.env.PORT || process.env.SERVER_PORT || 3000;
+// Khởi động server - KHÔNG CẦN database connection!
+const SERVER_PORT = process.env['PORT'] || process.env['SERVER_PORT'] || 3000;
 
-const MONGODB_URL = process.env.MONGODB_URL;
+server.listen(SERVER_PORT, () => {
+  logger.info(`Server đang chạy trên cổng ${SERVER_PORT}`);
+  logger.info('✅ Sử dụng in-memory storage - ZERO external dependencies');
+  logger.info(`📊 Storage stats: ${JSON.stringify(storageService.getStats())}`);
+});
 
-if (!MONGODB_URL) {
-  logger.error('MONGODB_URL không được định nghĩa trong file .env');
-  process.exit(1);
-}
-
-mongoose.connect(MONGODB_URL)
-  .then(() => {
-    logger.info('Đã kết nối với MongoDB');
-    server.listen(SERVER_PORT, () => {
-      logger.info(`Server đang chạy trên cổng ${SERVER_PORT}`);
-    });
-  })
-  .catch(error => {
-    logger.error('Không thể kết nối với MongoDB:', error);
+// Graceful shutdown - cleanup in-memory data
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, cleaning up...');
+  storageService.clear();
+  server.close(() => {
+    logger.info('Server closed');
+    process.exit(0);
   });
+});
 
 // Export cho testing
 export { app, server }; 

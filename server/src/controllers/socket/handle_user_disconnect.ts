@@ -1,15 +1,18 @@
 import { Socket, Server } from 'socket.io';
-import { get_conversation_by_participant, end_conversation } from '../conversation';
 import { waiting_queue, match_all_waiting_users } from './handle_new_user';
 import { logger } from '../../utils/logger';
-import { IConversation } from '../../models/conversation';
+import { handleDisconnect } from '../../services/socket/disconnect';
 import { update_user_state } from './setup_socket_server';
 
+/**
+ * Controller: Handle user disconnect
+ * Thin layer - calls service then handles socket I/O
+ */
 export const handle_user_disconnect = async (socket: Socket, io: Server) => {
   logger.info(`Người dùng ngắt kết nối: ${socket.id}`);
   
   try {
-    // Xóa người dùng khỏi hàng đợi nếu họ đang trong hàng đợi
+    // Remove from waiting queue
     const updated_waiting_queue = waiting_queue.filter(s => s.id !== socket.id);
     
     if (waiting_queue.length > updated_waiting_queue.length) {
@@ -19,10 +22,12 @@ export const handle_user_disconnect = async (socket: Socket, io: Server) => {
     waiting_queue.length = 0;
     waiting_queue.push(...updated_waiting_queue);
     
-    // Tìm cuộc trò chuyện của người dùng
-    const conversation = await get_conversation_by_participant(socket.id) as IConversation;
+    // Business logic in service
+    const { partnerId, conversationId } = await handleDisconnect({
+      socketId: socket.id
+    });
     
-    // Lấy socketStore từ req.app
+    // Get socketStore
     let socketStore = {};
     try {
       const req = socket.request as any;
@@ -31,34 +36,27 @@ export const handle_user_disconnect = async (socket: Socket, io: Server) => {
       logger.error('Không thể lấy socketStore:', error);
     }
     
-    if (conversation) {
-      // Tìm người còn lại trong cuộc trò chuyện
-      const partner_id = conversation.participants.find(p => p !== socket.id);
-      
-      if (partner_id) {
-        // Thông báo cho người còn lại rằng đối phương đã ngắt kết nối
-        const partner_socket = io.sockets.sockets.get(partner_id);
-        if (partner_socket) {
-          partner_socket.emit('partner-disconnected');
-          // Đưa người còn lại vào lại hàng đợi
-          waiting_queue.push(partner_socket);
-          partner_socket.emit('waiting');
-          // Cập nhật trạng thái người dùng
-          update_user_state(partner_id, 'waiting', io, socketStore);
-          logger.info(`Đã thông báo cho người dùng ${partner_id} và đưa vào hàng đợi chờ`);
-          
-          // Thử ghép đôi ngay lập tức
-          setTimeout(() => match_all_waiting_users(io), 500);
-        }
+    // Socket I/O - notify partner if exists
+    if (partnerId && conversationId) {
+      const partner_socket = io.sockets.sockets.get(partnerId);
+      if (partner_socket) {
+        partner_socket.emit('partner-disconnected');
+        
+        // Add partner back to queue
+        waiting_queue.push(partner_socket);
+        partner_socket.emit('waiting');
+        
+        update_user_state(partnerId, 'waiting', io, socketStore);
+        logger.info(`Đã thông báo cho người dùng ${partnerId} và đưa vào hàng đợi chờ`);
+        
+        // Try to match immediately
+        setTimeout(() => match_all_waiting_users(io), 500);
       }
-      
-      // Kết thúc cuộc trò chuyện và xóa tất cả tin nhắn
-      await end_conversation(conversation._id.toString());
     }
     
-    // Cập nhật trạng thái người dùng ngắt kết nối
+    // Update disconnected user state
     update_user_state(socket.id, null, io, socketStore);
   } catch (error) {
     logger.error('Lỗi khi xử lý ngắt kết nối:', error);
   }
-}; 
+};

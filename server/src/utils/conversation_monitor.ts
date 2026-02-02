@@ -1,20 +1,20 @@
 import { Server } from 'socket.io';
-import Conversation, { IConversation } from '../models/conversation';
-import { end_conversation } from '../controllers/conversation';
 import { logger } from './logger';
+import { timeoutIdleConversations } from '../services/conversation/timeout';
 
 /**
- * Thời gian không hoạt động tối đa cho một cuộc trò chuyện (ms)
+ * Idle timeout duration (ms)
  */
-const IDLE_TIMEOUT = 60 * 1000; // 1 phút
+const IDLE_TIMEOUT = 60 * 1000; // 1 minute
 
 /**
- * Khoảng thời gian kiểm tra các cuộc trò chuyện không hoạt động (ms)
+ * Check interval (ms)
  */
-const CHECK_INTERVAL = 10 * 1000; // 10 giây
+const CHECK_INTERVAL = 10 * 1000; // 10 seconds
 
 /**
- * Tiện ích giám sát và kết thúc các cuộc trò chuyện không hoạt động
+ * Conversation Monitor
+ * Thin layer - calls service and handles socket I/O only
  */
 export class ConversationMonitor {
   private io: Server;
@@ -25,84 +25,66 @@ export class ConversationMonitor {
   }
 
   /**
-   * Bắt đầu giám sát các cuộc trò chuyện
+   * Start monitoring conversations
    */
   start(): void {
-    logger.info('Bắt đầu giám sát các cuộc trò chuyện không hoạt động');
+    logger.info('Starting idle conversation monitoring');
     
-    // Đảm bảo không có nhiều interval chạy cùng lúc
     if (this.interval_id) {
       clearInterval(this.interval_id);
     }
     
-    // Thiết lập interval để kiểm tra định kỳ
     this.interval_id = setInterval(() => {
       this.check_idle_conversations();
     }, CHECK_INTERVAL);
   }
 
   /**
-   * Dừng giám sát các cuộc trò chuyện
+   * Stop monitoring conversations
    */
   stop(): void {
     if (this.interval_id) {
       clearInterval(this.interval_id);
       this.interval_id = null;
-      logger.info('Đã dừng giám sát các cuộc trò chuyện');
+      logger.info('Stopped idle conversation monitoring');
     }
   }
 
   /**
-   * Kiểm tra và kết thúc các cuộc trò chuyện không hoạt động
+   * Check and handle idle conversations
+   * Thin layer - calls service then sends socket notifications
    */
   private async check_idle_conversations(): Promise<void> {
     try {
-      const now = new Date();
-      const idle_threshold = new Date(now.getTime() - IDLE_TIMEOUT);
-
-      // Tìm các cuộc trò chuyện không hoạt động
-      const idle_conversations = await Conversation.find({
-        is_active: true,
-        last_activity: { $lt: idle_threshold }
-      }) as IConversation[];
-
-      logger.debug(`Tìm thấy ${idle_conversations.length} cuộc trò chuyện không hoạt động`);
-
-      // Kết thúc từng cuộc trò chuyện
-      for (const conversation of idle_conversations) {
-        try {
-          // Thông báo cho các thành viên về việc cuộc trò chuyện kết thúc
-          for (const participant_id of conversation.participants) {
-            const socket = this.io.sockets.sockets.get(participant_id);
-            if (socket) {
-              logger.info(`Thông báo timeout cho người dùng ${participant_id}`);
-              socket.emit('conversation-timeout', { 
-                conversation_id: conversation._id.toString(),
-                message: 'Cuộc trò chuyện đã kết thúc do không hoạt động trong 1 phút' 
-              });
-              
-              // Không cần gửi sự kiện 'waiting' vì client sẽ tự động kết nối lại
-            }
+      // Business logic in service
+      const { idleConversations } = await timeoutIdleConversations({
+        idleTimeoutMs: IDLE_TIMEOUT
+      });
+      
+      // Socket I/O only - notify participants
+      for (const conversation of idleConversations) {
+        for (const participant_id of conversation.participants) {
+          const socket = this.io.sockets.sockets.get(participant_id);
+          if (socket) {
+            logger.info(`Notifying user ${participant_id} of timeout`);
+            socket.emit('conversation-timeout', {
+              conversation_id: conversation.id,
+              message: 'Cuộc trò chuyện đã kết thúc do không hoạt động trong 1 phút'
+            });
           }
-
-          // Kết thúc cuộc trò chuyện
-          await end_conversation(conversation._id.toString());
-          logger.info(`Đã kết thúc cuộc trò chuyện ${conversation._id} do không hoạt động`);
-        } catch (error) {
-          logger.error(`Lỗi khi kết thúc cuộc trò chuyện ${conversation._id}:`, error);
         }
       }
     } catch (error) {
-      logger.error('Lỗi khi kiểm tra các cuộc trò chuyện không hoạt động:', error);
+      logger.error('Error checking idle conversations:', error);
     }
   }
 }
 
 /**
- * Tạo và khởi động bộ giám sát cuộc trò chuyện
+ * Create and start conversation monitor
  */
 export const setup_conversation_monitor = (io: Server): ConversationMonitor => {
   const monitor = new ConversationMonitor(io);
   monitor.start();
   return monitor;
-}; 
+};

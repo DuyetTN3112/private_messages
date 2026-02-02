@@ -6,7 +6,7 @@
  */
 
 // Kiểm tra môi trường
-const is_production = process.env.NODE_ENV === 'production';
+const is_production = process.env['NODE_ENV'] === 'production';
 
 /**
  * Logger cho môi trường development
@@ -50,7 +50,7 @@ const prod_logger = {
   },
   debug: () => {}, // Không log debug trong production
   // Log client-side trong production không hiển thị chi tiết
-  client_error: (message: string) => {
+  client_error: (_message: string) => {
     // Không log chi tiết lỗi client-side trong production
   }
 };
