@@ -9,9 +9,13 @@ import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { setup_conversation_monitor } from './utils/conversation_monitor';
 import { storageService } from './services/storage/repository';
+import { setupCqrs } from './config/cqrs_setup';
 
 // Cấu hình dotenv
 dotenv.config();
+
+// Initialize CQRS
+setupCqrs();
 
 // Tạo Express app
 const app = express();
@@ -39,21 +43,23 @@ const io = new Server(server, {
 });
 
 // Socket store để lưu trữ trạng thái người dùng
-const socketStore: { [socket_id: string]: 'waiting' | 'matched' | null } = {};
+const socket_store: { [socket_id: string]: 'waiting' | 'matched' | null } = {};
 
 // Gắn socketStore vào app để có thể truy cập từ các route
-app.set('socketStore', socketStore);
+app.set('socketStore', socket_store);
 // Gắn io vào app
 app.set('io', io);
 
 // Cấu hình để socket request có thể truy cập Express app
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 io.use((socket: any, next) => {
-  (socket.request as any).app = app;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  (socket.request).app = app;
   next();
 });
 
 // Cấu hình Socket.io
-setup_socket_server(io, socketStore);
+setup_socket_server(io, socket_store);
 
 // Khởi động monitor cho các cuộc trò chuyện không hoạt động
 setup_conversation_monitor(io);

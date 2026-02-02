@@ -14,21 +14,21 @@ export default tseslint.config(
     rules: {
       /* === STRICT TYPESCRIPT RULES === */
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/explicit-function-return-type': 'off', // Too strict - causes false positives
-      '@typescript-eslint/explicit-module-boundary-types': 'off', // Too strict
+      '@typescript-eslint/explicit-function-return-type': 'error',
+      '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
       }],
-      '@typescript-eslint/no-non-null-assertion': 'warn',
-      '@typescript-eslint/strict-boolean-expressions': 'off', // Too many false positives
+      '@typescript-eslint/no-non-null-assertion': 'error',
+      '@typescript-eslint/strict-boolean-expressions': 'warn',
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
-      '@typescript-eslint/prefer-nullish-coalescing': 'warn',
-      '@typescript-eslint/prefer-optional-chain': 'warn',
-      '@typescript-eslint/restrict-template-expressions': 'off', // Allow numbers in templates
+      '@typescript-eslint/prefer-nullish-coalescing': 'error',
+      '@typescript-eslint/prefer-optional-chain': 'error',
+      '@typescript-eslint/restrict-template-expressions': 'error',
       
       /* === NAMING CONVENTION - ALLOW SNAKE_CASE FOR BACKEND === */
       '@typescript-eslint/naming-convention': ['error',

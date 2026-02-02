@@ -127,7 +127,8 @@ export const validate_message = (message: string): void => {
   }
   
   // Trích xuất URL trước khi kiểm tra
-  const { processed_message, _urls } = extract_urls(message);
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  const { processed_message, urls: _urls } = extract_urls(message);
   
   // Kiểm tra ký tự lặp lại quá nhiều
   if (has_excessive_repeats(processed_message)) {

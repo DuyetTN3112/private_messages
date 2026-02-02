@@ -41,7 +41,8 @@ const prod_logger = {
   warn: (message: string) => {
     console.warn(`[WARNING] ${message}`);
   },
-  error: (message: string, error: Error | any) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  error: (message: string, _error: Error | any) => {
     // Log ID của lỗi để có thể tìm kiếm trong log system
     const error_id = generate_error_id();
     console.error(`[ERROR] ${message} (ID: ${error_id})`);
