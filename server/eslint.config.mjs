@@ -1,7 +1,7 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+export default [
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {
@@ -19,6 +19,8 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
+        caughtErrors: 'all',
+        caughtErrorsIgnorePattern: '^_',
       }],
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/strict-boolean-expressions': 'warn',
@@ -41,6 +43,7 @@ export default tseslint.config(
         {
           selector: 'variable',
           format: ['snake_case', 'UPPER_CASE'],
+          leadingUnderscore: 'allow',
         },
         {
           selector: 'function',
@@ -49,6 +52,7 @@ export default tseslint.config(
         {
           selector: 'parameter',
           format: ['snake_case'],
+          leadingUnderscore: 'allow',
         },
         {
           selector: 'typeLike', // Types, Interfaces, Classes
@@ -70,4 +74,4 @@ export default tseslint.config(
       'no-throw-literal': 'error',
     },
   },
-);
+];

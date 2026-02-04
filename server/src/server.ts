@@ -1,7 +1,7 @@
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import { setup_socket_server } from './controllers/socket';
 import routes from './routes';
 import { error_handler } from './middleware/error_handler';
@@ -9,13 +9,13 @@ import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { setup_conversation_monitor } from './utils/conversation_monitor';
 import { storageService } from './services/storage/repository';
-import { setupCqrs } from './config/cqrs_setup';
+import { setup_cqrs } from './config/cqrs_setup';
 
 // Cấu hình dotenv
 dotenv.config();
 
 // Initialize CQRS
-setupCqrs();
+setup_cqrs();
 
 // Tạo Express app
 const app = express();
@@ -42,33 +42,39 @@ const io = new Server(server, {
   }
 });
 
+// Socket store type definition
+export type SocketStoreType = Record<string, 'waiting' | 'matched' | null>;
+
 // Socket store để lưu trữ trạng thái người dùng
-const socket_store: { [socket_id: string]: 'waiting' | 'matched' | null } = {};
+const socket_store: SocketStoreType = {};
 
 // Gắn socketStore vào app để có thể truy cập từ các route
 app.set('socketStore', socket_store);
 // Gắn io vào app
 app.set('io', io);
 
+// Interface cho Request extended
+export interface AppRequest extends http.IncomingMessage {
+  app: express.Application;
+}
+
 // Cấu hình để socket request có thể truy cập Express app
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-io.use((socket: any, next) => {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  (socket.request).app = app;
+io.use((socket: Socket, next) => {
+  (socket.request as AppRequest).app = app;
   next();
 });
 
 // Cấu hình Socket.io
-setup_socket_server(io, socket_store);
+setup_socket_server(io);
 
 // Khởi động monitor cho các cuộc trò chuyện không hoạt động
 setup_conversation_monitor(io);
 
 // Khởi động server - KHÔNG CẦN database connection!
-const SERVER_PORT = process.env['PORT'] || process.env['SERVER_PORT'] || 3000;
+const SERVER_PORT = process.env['PORT'] ?? process.env['SERVER_PORT'] ?? 3000;
 
 server.listen(SERVER_PORT, () => {
-  logger.info(`Server đang chạy trên cổng ${SERVER_PORT}`);
+  logger.info(`Server đang chạy trên cổng ${String(SERVER_PORT)}`);
   logger.info('✅ Sử dụng in-memory storage - ZERO external dependencies');
   logger.info(`📊 Storage stats: ${JSON.stringify(storageService.getStats())}`);
 });

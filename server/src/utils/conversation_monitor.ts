@@ -35,7 +35,7 @@ export class ConversationMonitor {
     }
     
     this.interval_id = setInterval(() => {
-      this.check_idle_conversations();
+      void this.check_idle_conversations();
     }, CHECK_INTERVAL);
   }
 
@@ -57,12 +57,12 @@ export class ConversationMonitor {
   private async check_idle_conversations(): Promise<void> {
     try {
       // Business logic in service
-      const { idleConversations } = await timeoutIdleConversations({
+      const { idleConversations: idle_conversations } = await timeoutIdleConversations({
         idleTimeoutMs: IDLE_TIMEOUT
       });
       
       // Socket I/O only - notify participants
-      for (const conversation of idleConversations) {
+      for (const conversation of idle_conversations) {
         for (const participant_id of conversation.participants) {
           const socket = this.io.sockets.sockets.get(participant_id);
           if (socket) {

@@ -15,9 +15,10 @@ const VALID_CHARS_REGEX = /^[\p{L}\p{N}\p{P}\p{Zs}\p{So}\p{Mn}\p{Mc}]+$/u;
 
 /**
  * Regex phát hiện quá nhiều dấu nguyên âm, có thể là spam
- * Phát hiện các dấu/ký tự diacritical lặp lại quá 10 lần
+ * Thay đổi: Sử dụng \p{M} (Unicode Marks) để bắt tất cả các dấu kết hợp
+ * thay vì liệt kê thủ công range gây lỗi ESLint.
  */
-const EXCESSIVE_DIACRITICS_REGEX = /[\u0300-\u036F\u0483-\u0489\u1AB0-\u1AFF\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]{10,}/;
+const EXCESSIVE_DIACRITICS_REGEX = /\p{M}{10,}/u;
 
 /**
  * Giới hạn độ dài tin nhắn
@@ -31,7 +32,7 @@ const MAX_MESSAGE_LENGTH = 1000;
  */
 const has_excessive_repeats = (text: string, max_repeats: number = 5): boolean => {
   // Tạo regex kiểm tra ký tự lặp lại
-  const repeated_char_regex = new RegExp(`(.)\\1{${max_repeats},}`, 'u');
+  const repeated_char_regex = new RegExp(`(.)\\1{${String(max_repeats)},}`, 'u');
   return repeated_char_regex.test(text);
 };
 
@@ -49,8 +50,11 @@ const has_repeated_words = (text: string, max_repeats: number = 3): boolean => {
   let repeat_count = 1;
   
   for (let i = 0; i < words.length; i++) {
+    // FIX: TypeScript error ts(2322)
+    // Kiểm tra undefined để đảm bảo kiểu dữ liệu là string
     const word = words[i];
     if (!word) continue;
+
     if (word === current_word) {
       repeat_count++;
       if (repeat_count > max_repeats) return true;
@@ -73,11 +77,11 @@ const extract_urls = (message: string): { processed_message: string, urls: strin
   const processed_message = message.replace(URL_REGEX, (match) => {
     urls.push(match);
     console.log(`URL được phát hiện và bảo vệ: ${match}`);
-    return `[URL_${urls.length - 1}]`;
+    return `[URL_${String(urls.length - 1)}]`;
   });
   
   if (urls.length > 0) {
-    console.log(`Đã trích xuất ${urls.length} URL từ tin nhắn.`);
+    console.log(`Đã trích xuất ${String(urls.length)} URL từ tin nhắn.`);
   }
   
   return { processed_message, urls };
@@ -93,13 +97,15 @@ const restore_urls = (processed_message: string, urls: string[]): string => {
   let restored = processed_message;
   for (let i = 0; i < urls.length; i++) {
     const url = urls[i];
-    if (!url) continue;
-    restored = restored.replace(`[URL_${i}]`, url);
+    // Ensure url is defined before using it
+    if (typeof url !== 'string') continue;
+    
+    restored = restored.replace(`[URL_${String(i)}]`, url);
     console.log(`URL đã được khôi phục: ${url}`);
   }
   
   if (urls.length > 0) {
-    console.log(`Đã khôi phục ${urls.length} URL trong tin nhắn.`);
+    console.log(`Đã khôi phục ${String(urls.length)} URL trong tin nhắn.`);
   }
   
   return restored;
@@ -118,7 +124,7 @@ export const validate_message = (message: string): void => {
   
   // Kiểm tra độ dài tin nhắn
   if (message.length > MAX_MESSAGE_LENGTH) {
-    throw new ApiError(`Tin nhắn không được vượt quá ${MAX_MESSAGE_LENGTH} ký tự`, 400);
+    throw new ApiError(`Tin nhắn không được vượt quá ${String(MAX_MESSAGE_LENGTH)} ký tự`, 400);
   }
   
   // Kiểm tra tin nhắn rỗng hoặc chỉ có khoảng trắng
@@ -127,8 +133,7 @@ export const validate_message = (message: string): void => {
   }
   
   // Trích xuất URL trước khi kiểm tra
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  const { processed_message, urls: _urls } = extract_urls(message);
+  const { processed_message } = extract_urls(message);
   
   // Kiểm tra ký tự lặp lại quá nhiều
   if (has_excessive_repeats(processed_message)) {
@@ -159,7 +164,7 @@ export const is_valid_message = (message: string): boolean => {
   try {
     validate_message(message);
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 };
@@ -184,10 +189,10 @@ export const sanitize_message = (message: string): string => {
   let cleaned = processed_message.replace(/[^\p{L}\p{N}\p{P}\p{Zs}\p{So}\p{Mn}\p{Mc}]/gu, '');
   
   // Xử lý ký tự lặp lại
-  cleaned = cleaned.replace(/(.)\1{5,}/gu, (_match, char) => char.repeat(5));
+  cleaned = cleaned.replace(/(.)\1{5,}/gu, (_match: string, char: string) => char.repeat(5));
   
   // Khôi phục URL
   sanitized = restore_urls(cleaned, urls);
   
   return sanitized.trim();
-}; 
+};

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { Server } from 'socket.io';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -14,7 +15,7 @@ router.get('/status', (_req: Request, res: Response): void => {
 
 // API route lấy thông tin người dùng hiện tại
 router.get('/stats', (req: Request, res: Response): void => {
-  const io = req.app.get('io');
+  const io = req.app.get('io') as Server | undefined;
   
   if (!io) {
     logger.error('Socket.IO server chưa được khởi tạo');
@@ -23,11 +24,14 @@ router.get('/stats', (req: Request, res: Response): void => {
   }
 
   // Lấy số lượng người dùng từ io
-  const online_users = Object.keys(io.sockets.sockets).length || 0;
+  // io.sockets.sockets is a Map in Socket.IO v4
+  const online_users = io.sockets.sockets.size;
   
   // Lấy số người dùng đang chờ từ socket store
-  const socketStore: any = req.app.get('socketStore') || {};
-  const waiting_users = Object.values(socketStore).filter((state: any) => state === 'waiting').length || 0;
+  const socket_store = req.app.get('socketStore') as { [key: string]: string } | undefined;
+  const waiting_users = socket_store 
+    ? Object.values(socket_store).filter((state: unknown) => state === 'waiting').length 
+    : 0;
   
   res.json({
     online_users,

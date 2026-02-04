@@ -3,6 +3,7 @@ import { ICommand, ICommandHandler } from '../interfaces/command.interface';
 import { logger } from '../../utils/logger';
 import { matchUsers } from '../../services/socket/match';
 import { update_user_state } from '../../services/socket/user_state_broadcaster';
+import { AppRequest, SocketStoreType } from '../../server';
 
 // Singleton queue for matching
 // In a real app with multiple instances, this should be Redis
@@ -31,14 +32,11 @@ export class FindPartnerCommandHandler implements ICommandHandler<FindPartnerCom
     socket.emit('waiting');
     
     // Update state
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const req = socket.request as any;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    const socket_store = req.app?.get('socketStore') || {};
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    const req = socket.request as AppRequest;
+    const socket_store = req.app.get('socketStore') as SocketStoreType | undefined ?? {};
     update_user_state(socket.id, 'waiting', io, socket_store);
     
-    logger.info(`Đã thêm người dùng ${socket.id} vào hàng đợi. Tổng số người đang chờ: ${waiting_queue.length}`);
+    logger.info(`Đã thêm người dùng ${socket.id} vào hàng đợi. Tổng số người đang chờ: ${String(waiting_queue.length)}`);
     
     // Try to match users
     await this.match_all_waiting_users(io);
@@ -46,8 +44,8 @@ export class FindPartnerCommandHandler implements ICommandHandler<FindPartnerCom
     return true;
   }
 
-  private async match_all_waiting_users(io: Server) {
-    logger.debug(`Bắt đầu ghép đôi tất cả người dùng. Hàng đợi hiện có ${waiting_queue.length} người.`);
+  private async match_all_waiting_users(io: Server): Promise<void> {
+    logger.debug(`Bắt đầu ghép đôi tất cả người dùng. Hàng đợi hiện có ${String(waiting_queue.length)} người.`);
     let matched_count = 0;
     
     while (waiting_queue.length >= 2) {
@@ -72,7 +70,7 @@ export class FindPartnerCommandHandler implements ICommandHandler<FindPartnerCom
     }
     
     if (matched_count > 0) {
-        logger.debug(`Đã ghép đôi ${matched_count} cặp. Còn lại ${waiting_queue.length} người đang chờ.`);
+        logger.debug(`Đã ghép đôi ${String(matched_count)} cặp. Còn lại ${String(waiting_queue.length)} người đang chờ.`);
     }
   }
 
@@ -93,16 +91,12 @@ export class FindPartnerCommandHandler implements ICommandHandler<FindPartnerCom
         partner_id: socket1.id
       });
       
-      socket1.join(conversation.id);
-      socket2.join(conversation.id);
+      void socket1.join(conversation.id);
+      void socket2.join(conversation.id);
       
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const req = socket1.request as any;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-      const socket_store = req.app?.get('socketStore') || {};
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      const req = socket1.request as AppRequest;
+      const socket_store = req.app.get('socketStore') as SocketStoreType | undefined ?? {};
       update_user_state(socket1.id, 'matched', io, socket_store);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       update_user_state(socket2.id, 'matched', io, socket_store);
       
       return true;

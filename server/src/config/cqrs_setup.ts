@@ -13,20 +13,20 @@ import { EndConversationCommand, EndConversationCommandHandler } from '../applic
 import { GetUserStatsQuery, GetUserStatsQueryHandler } from '../application/queries/get_user_stats.query';
 import { GetConversationQuery, GetConversationQueryHandler } from '../application/queries/get_conversation.query';
 
-export const commandBus: ICommandBus = new InMemoryCommandBus();
-export const queryBus: IQueryBus = new InMemoryQueryBus();
+export const command_bus: ICommandBus = new InMemoryCommandBus();
+export const query_bus: IQueryBus = new InMemoryQueryBus();
 
-export const setupCqrs = () => {
+export const setup_cqrs = (): void => {
   // Register Command Handlers
-  commandBus.register(FindPartnerCommand.name, new FindPartnerCommandHandler());
-  commandBus.register(SendMessageCommand.name, new SendMessageCommandHandler());
-  commandBus.register(DisconnectUserCommand.name, new DisconnectUserCommandHandler());
-  commandBus.register(AddReactionCommand.name, new AddReactionCommandHandler());
-  commandBus.register(EndConversationCommand.name, new EndConversationCommandHandler());
+  command_bus.register(FindPartnerCommand.name, new FindPartnerCommandHandler());
+  command_bus.register(SendMessageCommand.name, new SendMessageCommandHandler());
+  command_bus.register(DisconnectUserCommand.name, new DisconnectUserCommandHandler());
+  command_bus.register(AddReactionCommand.name, new AddReactionCommandHandler());
+  command_bus.register(EndConversationCommand.name, new EndConversationCommandHandler());
 
   // Register Query Handlers
-  queryBus.register(GetUserStatsQuery.name, new GetUserStatsQueryHandler());
-  queryBus.register(GetConversationQuery.name, new GetConversationQueryHandler());
+  query_bus.register(GetUserStatsQuery.name, new GetUserStatsQueryHandler());
+  query_bus.register(GetConversationQuery.name, new GetConversationQueryHandler());
   
   console.log('CQRS Buses initialized and handlers registered');
 };

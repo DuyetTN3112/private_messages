@@ -4,6 +4,7 @@ import { logger } from '../../utils/logger';
 import { update_user_state } from '../../services/socket/user_state_broadcaster';
 import { storageService } from '../../services/storage/repository';
 import { waiting_queue } from './find_partner.command';
+import { AppRequest, SocketStoreType } from '../../server';
 
 export class DisconnectUserCommand implements ICommand {
   constructor(
@@ -13,8 +14,7 @@ export class DisconnectUserCommand implements ICommand {
 }
 
 export class DisconnectUserCommandHandler implements ICommandHandler<DisconnectUserCommand> {
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async execute(command: DisconnectUserCommand): Promise<void> {
+  execute(command: DisconnectUserCommand): void {
     const { socket, io } = command;
     logger.info(`Người dùng ngắt kết nối: ${socket.id}`);
 
@@ -30,15 +30,12 @@ export class DisconnectUserCommandHandler implements ICommandHandler<DisconnectU
     if (conversation) {
       const partner_id = conversation.participants.find(p => p !== socket.id);
       
-      if (partner_id) {
+      if (typeof partner_id === 'string' && partner_id) {
         io.to(partner_id).emit('partner-disconnected');
         
         // Notify partner to update state
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const req = socket.request as any;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const socket_store = req.app?.get('socketStore') || {};
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        const req = socket.request as AppRequest;
+        const socket_store = req.app.get('socketStore') as SocketStoreType | undefined ?? {};
         update_user_state(partner_id, 'waiting', io, socket_store);
       }
       
@@ -46,16 +43,12 @@ export class DisconnectUserCommandHandler implements ICommandHandler<DisconnectU
     }
     
     // Update user state
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const req = socket.request as any;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    const socket_store = req.app?.get('socketStore') || {};
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    if (socket_store[socket.id]) {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete, @typescript-eslint/no-unsafe-member-access
-      delete socket_store[socket.id];
+    const req = socket.request as AppRequest;
+    const socket_store = req.app.get('socketStore') as SocketStoreType | undefined ?? {};
+    
+    if (Object.prototype.hasOwnProperty.call(socket_store, socket.id)) {
+      Reflect.deleteProperty(socket_store, socket.id);
       // Trigger stats update
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       update_user_state(socket.id, null, io, socket_store); 
     }
   }

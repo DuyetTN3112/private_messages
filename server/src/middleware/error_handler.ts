@@ -31,7 +31,7 @@ export const error_handler = (err: Error | ApiError, _req: Request, res: Respons
   const status_code = (err as ApiError).status_code || 500;
   
   // Log lỗi với các thông tin phù hợp
-  logger.error(`${status_code} - ${err.message}`, err);
+  logger.error(`${String(status_code)} - ${err.message}`, err);
   
   // Format lỗi để trả về client
   const error_response = {
@@ -48,7 +48,7 @@ export const error_handler = (err: Error | ApiError, _req: Request, res: Respons
  */
 export const unhandled_rejection_handler = (
   reason: Error,
-  _promise: Promise<any>
+  _promise: Promise<unknown>
 ): void => {
   logger.error('Unhandled Rejection at Promise', reason);
   // Thông thường ở đây nên kết thúc process với exit code 1
@@ -62,7 +62,7 @@ export const unhandled_rejection_handler = (
 /**
  * Middleware bắt lỗi không được xử lý
  */
-export const uncaught_exception_handler = (err: Error) => {
+export const uncaught_exception_handler = (err: Error): void => {
   logger.error('Uncaught Exception', err);
   // Trong trường hợp có uncaught exception, nên kết thúc process
   process.exit(1);
@@ -71,7 +71,7 @@ export const uncaught_exception_handler = (err: Error) => {
 /**
  * Đăng ký các handler cho unhandled rejection và uncaught exception
  */
-export const register_error_handlers = () => {
+export const register_error_handlers = (): void => {
   process.on('unhandledRejection', unhandled_rejection_handler);
   process.on('uncaughtException', uncaught_exception_handler);
 }; 

@@ -5,6 +5,7 @@
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    "allowJs": true,
     
     /* === STRICT TYPE CHECKING === */
     "strict": true,
@@ -36,7 +37,7 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "eslint.config.mjs"],
   "ts-node": {
     "transpileOnly": true
   }

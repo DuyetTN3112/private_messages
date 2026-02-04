@@ -3,21 +3,14 @@ import { ApiError } from './error_handler';
 import { logger } from '../utils/logger';
 
 /**
- * Interface cho đối tượng lưu trữ request
- */
-interface RateLimitStore {
-  [key: string]: {
-    count: number;
-    reset_time: number;
-    blocked_until?: number;
-  };
-}
-
-/**
  * Store lưu trữ các request trong memory
  * Trong ứng dụng thực tế nên sử dụng Redis hoặc store phân tán khác
  */
-const ip_store: RateLimitStore = {};
+const ip_store: Map<string, {
+  count: number;
+  reset_time: number;
+  blocked_until?: number;
+}> = new Map();
 
 /**
  * Tạo rate limiter với các tùy chọn
@@ -30,32 +23,38 @@ export const create_rate_limiter = (
   time_window: number = 60,
   block_duration: number = 300
 ) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     // Lấy IP của client hoặc key định danh khác
-    const client_ip = (req.headers['x-forwarded-for'] as string) || 
-                      req.socket.remoteAddress || 
+    const forwarded = req.headers['x-forwarded-for'];
+    const client_ip = (typeof forwarded === 'string' ? forwarded : undefined) ?? 
+                      req.socket.remoteAddress ?? 
                       'unknown';
     
     // Lấy thời gian hiện tại
     const now = Date.now();
     
     // Tạo hoặc lấy thông tin của client
-    if (!ip_store[client_ip]) {
-      ip_store[client_ip] = {
+    if (!ip_store.has(client_ip)) {
+      ip_store.set(client_ip, {
         count: 0,
         reset_time: now + (time_window * 1000)
-      };
+      });
     }
     
-    const client_data = ip_store[client_ip];
+    const client_data = ip_store.get(client_ip);
+
+    if (!client_data) {
+        next();
+        return;
+    }
     
     // Kiểm tra nếu client đang bị chặn
-    if (client_data.blocked_until && now < client_data.blocked_until) {
+    if (client_data.blocked_until !== undefined && now < client_data.blocked_until) {
       const remaining_seconds = Math.ceil((client_data.blocked_until - now) / 1000);
       
-      logger.warn(`Rate limit exceeded: Client ${client_ip} is blocked. Remaining time: ${remaining_seconds}s`);
+      logger.warn(`Rate limit exceeded: Client ${client_ip} is blocked. Remaining time: ${String(remaining_seconds)}s`);
       
-      throw new ApiError(`Quá nhiều yêu cầu. Vui lòng thử lại sau ${remaining_seconds} giây.`, 429);
+      throw new ApiError(`Quá nhiều yêu cầu. Vui lòng thử lại sau ${String(remaining_seconds)} giây.`, 429);
     }
     
     // Reset counter nếu đã hết thời gian
@@ -77,9 +76,9 @@ export const create_rate_limiter = (
       // Thiết lập thời gian chặn
       client_data.blocked_until = now + (block_duration * 1000);
       
-      logger.warn(`Rate limit exceeded: Client ${client_ip} is now blocked for ${block_duration}s`);
+      logger.warn(`Rate limit exceeded: Client ${client_ip} is now blocked for ${String(block_duration)}s`);
       
-      throw new ApiError(`Quá nhiều yêu cầu. Vui lòng thử lại sau ${block_duration} giây.`, 429);
+      throw new ApiError(`Quá nhiều yêu cầu. Vui lòng thử lại sau ${String(block_duration)} giây.`, 429);
     }
     
     next();
@@ -109,12 +108,11 @@ export const strict_rate_limiter = create_rate_limiter(20, 60, 600); // 20 reque
 const cleanup_interval = 1000 * 60 * 30; // 30 phút
 setInterval(() => {
   const now = Date.now();
-  Object.keys(ip_store).forEach(ip => {
-    const client_data = ip_store[ip];
-    if (!client_data) return;
+  for (const [ip, client_data] of ip_store.entries()) {
     // Xóa client không còn bị chặn và đã hết thời gian reset
-    if ((!client_data.blocked_until || client_data.blocked_until < now) && client_data.reset_time < now) {
-      delete ip_store[ip];
+    const is_blocked = client_data.blocked_until !== undefined && client_data.blocked_until > now;
+    if (!is_blocked && client_data.reset_time < now) {
+      ip_store.delete(ip);
     }
-  });
+  }
 }, cleanup_interval); 

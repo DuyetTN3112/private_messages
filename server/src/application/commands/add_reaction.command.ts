@@ -13,7 +13,7 @@ export class AddReactionCommand implements ICommand {
   ) {}
 }
 
-export class AddReactionCommandHandler implements ICommandHandler<AddReactionCommand, void> {
+export class AddReactionCommandHandler implements ICommandHandler<AddReactionCommand> {
   async execute(command: AddReactionCommand): Promise<void> {
 
     await Promise.resolve();
