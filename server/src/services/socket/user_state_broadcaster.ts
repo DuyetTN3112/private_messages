@@ -1,11 +1,13 @@
 import { Server } from 'socket.io';
-import { getUserStats } from './stats';
+import { get_user_stats } from './stats';
+
+export type SocketStore = Record<string, 'waiting' | 'matched' | null>;
 
 /**
  * Update and broadcast user statistics
  */
-export const update_user_stats = (io: Server) => {
-  const stats = getUserStats(io);
+export const update_user_stats = (io: Server): void => {
+  const stats = get_user_stats(io);
   
   // Socket I/O only
   io.emit('user-stats', {
@@ -21,12 +23,13 @@ export const update_user_state = (
   socket_id: string, 
   state: 'waiting' | 'matched' | null, 
   io: Server, 
-  socketStore: { [socket_id: string]: 'waiting' | 'matched' | null }
-) => {
+  socket_store: SocketStore
+): void => {
   if (state === null) {
-    delete socketStore[socket_id];
+    // Use Reflect.deleteProperty to avoid dynamic delete lint error
+    Reflect.deleteProperty(socket_store, socket_id);
   } else {
-    socketStore[socket_id] = state;
+    socket_store[socket_id] = state;
   }
   update_user_stats(io);
 };

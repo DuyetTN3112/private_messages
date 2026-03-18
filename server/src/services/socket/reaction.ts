@@ -8,15 +8,15 @@ import { Server, Socket } from 'socket.io';
 import { logger } from '../../utils/logger';
 
 export interface AddReactionInput {
-  readonly socketId: string;
-  readonly conversationId: string;
-  readonly messageIndex: number;
+  readonly socket_id: string;
+  readonly conversation_id: string;
+  readonly message_index: number;
   readonly emoji: string;
 }
 
 export interface AddReactionOutput {
-  readonly roomExists: boolean;
-  readonly socketWasInRoom: boolean;
+  readonly room_exists: boolean;
+  readonly socket_was_in_room: boolean;
 }
 
 /**
@@ -29,38 +29,38 @@ export interface AddReactionOutput {
  * 
  * @returns Information about room state for controller
  */
-export const addReaction = (
+export const add_reaction = (
   input: AddReactionInput,
   socket: Socket,
   io: Server
 ): AddReactionOutput => {
   logger.info(
-    `User ${input.socketId} adding reaction ${input.emoji} to message ${input.messageIndex} in conversation ${input.conversationId}`
+    `User ${input.socket_id} adding reaction ${input.emoji} to message ${String(input.message_index)} in conversation ${input.conversation_id}`
   );
   
   // Check room existence
-  const room = io.sockets.adapter.rooms.get(input.conversationId);
-  const roomExists = !!room;
+  const room = io.sockets.adapter.rooms.get(input.conversation_id);
+  const room_exists = Boolean(room);
   
   if (room) {
-    logger.debug(`Room ${input.conversationId} exists with ${room.size} members`);
-    const socketsInRoom = Array.from(room);
-    logger.debug(`Sockets in room ${input.conversationId}: ${socketsInRoom.join(', ')}`);
+    logger.debug(`Room ${input.conversation_id} exists with ${String(room.size)} members`);
+    const sockets_in_room = Array.from(room);
+    logger.debug(`Sockets in room ${input.conversation_id}: ${sockets_in_room.join(', ')}`);
   } else {
-    logger.warn(`Room ${input.conversationId} not found`);
+    logger.warn(`Room ${input.conversation_id} not found`);
   }
   
   // Check if socket is in room
-  const socketWasInRoom = socket.rooms.has(input.conversationId);
+  const socket_was_in_room = socket.rooms.has(input.conversation_id);
   
   // Auto-join if not in room
-  if (!socketWasInRoom) {
-    logger.debug(`Socket ${input.socketId} not in room ${input.conversationId}, auto-joining`);
-    socket.join(input.conversationId);
+  if (!socket_was_in_room) {
+    logger.debug(`Socket ${input.socket_id} not in room ${input.conversation_id}, auto-joining`);
+    void socket.join(input.conversation_id);
   }
   
   return {
-    roomExists,
-    socketWasInRoom
+    room_exists,
+    socket_was_in_room
   };
 };

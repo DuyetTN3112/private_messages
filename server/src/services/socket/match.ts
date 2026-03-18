@@ -4,13 +4,13 @@
  * Business logic for matching two waiting users into a conversation.
  */
 
-import { createConversationUsecase } from '../conversation/create';
+import { create_conversation_usecase } from '../conversation/create';
 import type { Conversation } from '../storage/repository';
 import { logger } from '../../utils/logger';
 
 export interface MatchUsersInput {
-  readonly user1SocketId: string;
-  readonly user2SocketId: string;
+  readonly user1_socket_id: string;
+  readonly user2_socket_id: string;
 }
 
 export interface MatchUsersOutput {
@@ -25,13 +25,13 @@ export interface MatchUsersOutput {
  * - Creates a new conversation for the matched pair
  * - Returns conversation details for socket handlers to use
  */
-export const matchUsers = async (
+export const match_users = (
   input: MatchUsersInput
-): Promise<MatchUsersOutput> => {
-  logger.info(`Matching users ${input.user1SocketId} and ${input.user2SocketId}`);
+): MatchUsersOutput => {
+  logger.info(`Matching users ${input.user1_socket_id} and ${input.user2_socket_id}`);
   
-  const result = await createConversationUsecase({
-    participants: [input.user1SocketId, input.user2SocketId] as const
+  const result = create_conversation_usecase({
+    participants: [input.user1_socket_id, input.user2_socket_id] as const
   });
   
   logger.info(`Successfully matched users into conversation ${result.conversation.id}`);

@@ -4,17 +4,17 @@
  * Business logic for handling user disconnection.
  */
 
-import { getConversationUsecase } from '../conversation/get';
-import { endConversationUsecase } from '../conversation/end';
+import { get_conversation_usecase } from '../conversation/get';
+import { end_conversation_usecase } from '../conversation/end';
 import { logger } from '../../utils/logger';
 
 export interface HandleDisconnectInput {
-  readonly socketId: string;
+  readonly socket_id: string;
 }
 
 export interface HandleDisconnectOutput {
-  readonly partnerId: string | null;
-  readonly conversationId: string | null;
+  readonly partner_id: string | null;
+  readonly conversation_id: string | null;
 }
 
 /**
@@ -25,35 +25,35 @@ export interface HandleDisconnectOutput {
  * - End the conversation
  * - Return partner ID for notification purposes
  */
-export const handleDisconnect = async (
+export const handle_disconnect = (
   input: HandleDisconnectInput
-): Promise<HandleDisconnectOutput> => {
-  logger.info(`Handling disconnect for user ${input.socketId}`);
+): HandleDisconnectOutput => {
+  logger.info(`Handling disconnect for user ${input.socket_id}`);
   
   // Find conversation
-  const conversationResult = await getConversationUsecase({
-    participantId: input.socketId
+  const conversation_result = get_conversation_usecase({
+    participant_id: input.socket_id
   });
   
-  if (!conversationResult.conversation) {
-    logger.debug(`No active conversation found for ${input.socketId}`);
-    return { partnerId: null, conversationId: null };
+  if (!conversation_result.conversation) {
+    logger.debug(`No active conversation found for ${input.socket_id}`);
+    return { partner_id: null, conversation_id: null };
   }
   
-  const conversation = conversationResult.conversation;
+  const conversation = conversation_result.conversation;
   
   // Find partner
-  const partnerId = conversation.participants.find((p: string) => p !== input.socketId) ?? null;
+  const partner_id = conversation.participants.find((p: string) => p !== input.socket_id) ?? null;
   
   // End conversation
-  await endConversationUsecase({
-    conversationId: conversation.id
+  end_conversation_usecase({
+    conversation_id: conversation.id
   });
   
-  logger.info(`Ended conversation ${conversation.id} for disconnected user ${input.socketId}`);
+  logger.info(`Ended conversation ${conversation.id} for disconnected user ${input.socket_id}`);
   
   return {
-    partnerId,
-    conversationId: conversation.id
+    partner_id,
+    conversation_id: conversation.id
   };
 };

@@ -8,7 +8,7 @@ import { error_handler } from './middleware/error_handler';
 import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { setup_conversation_monitor } from './utils/conversation_monitor';
-import { storageService } from './services/storage/repository';
+import { storage_service } from './services/storage/repository';
 
 // Cấu hình dotenv
 dotenv.config();
@@ -72,13 +72,13 @@ const SERVER_PORT = process.env['PORT'] ?? process.env['SERVER_PORT'] ?? 3000;
 server.listen(SERVER_PORT, () => {
   logger.info(`Server đang chạy trên cổng ${String(SERVER_PORT)}`);
   logger.info('✅ Sử dụng in-memory storage - ZERO external dependencies');
-  logger.info(`📊 Storage stats: ${JSON.stringify(storageService.getStats())}`);
+  logger.info(`📊 Storage stats: ${JSON.stringify(storage_service.get_stats())}`);
 });
 
 // Graceful shutdown - cleanup in-memory data
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, cleaning up...');
-  storageService.clear();
+  storage_service.clear();
   server.close(() => {
     logger.info('Server closed');
     process.exit(0);

@@ -4,12 +4,12 @@
  * Business logic for retrieving messages from a conversation.
  */
 
-import { storageService } from '../storage/repository';
+import { storage_service } from '../storage/repository';
 import type { Message } from '../storage/repository';
 import { logger } from '../../utils/logger';
 
 export interface GetMessagesInput {
-  readonly conversationId: string;
+  readonly conversation_id: string;
 }
 
 export interface GetMessagesOutput {
@@ -24,15 +24,15 @@ export interface GetMessagesOutput {
  * - Returns empty array if conversation has no messages
  * - Returns empty array if conversation doesn't exist
  */
-export const getMessagesUsecase = async (
+export const get_messages_usecase = (
   input: GetMessagesInput
-): Promise<GetMessagesOutput> => {
-  logger.debug(`Retrieving messages for conversation ${input.conversationId}`);
+): GetMessagesOutput => {
+  logger.debug(`Retrieving messages for conversation ${input.conversation_id}`);
   
   try {
-    const messages = storageService.getMessagesByConversation(input.conversationId);
+    const messages = storage_service.get_messages_by_conversation(input.conversation_id);
     
-    logger.debug(`Retrieved ${messages.length} messages for conversation ${input.conversationId}`);
+    logger.debug(`Retrieved ${String(messages.length)} messages for conversation ${input.conversation_id}`);
     
     return { messages };
   } catch (error) {

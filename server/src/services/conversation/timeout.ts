@@ -4,12 +4,12 @@
  * Business logic for handling idle conversation timeouts.
  */
 
-import { storageService } from '../storage/repository';
-import { endConversationUsecase } from '../conversation/end';
+import { storage_service } from '../storage/repository';
+import { end_conversation_usecase } from '../conversation/end';
 import { logger } from '../../utils/logger';
 
 export interface TimeoutConversationsInput {
-  readonly idleTimeoutMs: number;
+  readonly idle_timeout_ms: number;
 }
 
 export interface IdleConversation {
@@ -18,7 +18,7 @@ export interface IdleConversation {
 }
 
 export interface TimeoutConversationsOutput {
-  readonly idleConversations: readonly IdleConversation[];
+  readonly idle_conversations: readonly IdleConversation[];
 }
 
 /**
@@ -30,31 +30,31 @@ export interface TimeoutConversationsOutput {
  * - End each idle conversation
  * - Return conversation details for notification purposes
  */
-export const timeoutIdleConversations = async (
+export const timeout_idle_conversations = (
   input: TimeoutConversationsInput
-): Promise<TimeoutConversationsOutput> => {
+): TimeoutConversationsOutput => {
   const now = new Date();
-  const idle_threshold = new Date(now.getTime() - input.idleTimeoutMs);
+  const idle_threshold = new Date(now.getTime() - input.idle_timeout_ms);
   
   // Find idle conversations
-  const idle_conversations = storageService.findIdleConversations(idle_threshold);
+  const idle_conversations = storage_service.find_idle_conversations(idle_threshold);
   
-  logger.debug(`Found ${idle_conversations.length} idle conversations`);
+  logger.debug(`Found ${String(idle_conversations.length)} idle conversations`);
   
-  const conversationsToNotify: IdleConversation[] = [];
+  const conversations_to_notify: IdleConversation[] = [];
   
   // End each idle conversation
   for (const conversation of idle_conversations) {
     try {
       // Store for notification
-      conversationsToNotify.push({
+      conversations_to_notify.push({
         id: conversation.id,
         participants: conversation.participants
       });
       
       // End conversation
-      await endConversationUsecase({
-        conversationId: conversation.id
+      end_conversation_usecase({
+        conversation_id: conversation.id
       });
       
       logger.info(`Ended idle conversation ${conversation.id}`);
@@ -64,6 +64,6 @@ export const timeoutIdleConversations = async (
   }
   
   return {
-    idleConversations: conversationsToNotify
+    idle_conversations: conversations_to_notify
   };
 };

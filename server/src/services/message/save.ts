@@ -5,13 +5,13 @@
  * Validates message content and sender authorization.
  */
 
-import { storageService } from '../storage/repository';
+import { storage_service } from '../storage/repository';
 import type { Message } from '../storage/repository';
 import { logger } from '../../utils/logger';
 
 export interface SaveMessageInput {
-  readonly conversationId: string;
-  readonly senderId: string;
+  readonly conversation_id: string;
+  readonly sender_id: string;
   readonly content: string;
 }
 
@@ -32,19 +32,19 @@ export interface SaveMessageOutput {
  * @throws Error if conversation is not active
  * @throws Error if sender is not a participant
  */
-export const saveMessageUsecase = async (
+export const save_message_usecase = (
   input: SaveMessageInput
-): Promise<SaveMessageOutput> => {
-  logger.debug(`Saving message to conversation ${input.conversationId} from ${input.senderId}`);
+): SaveMessageOutput => {
+  logger.debug(`Saving message to conversation ${input.conversation_id} from ${input.sender_id}`);
   
   try {
-    const message = storageService.saveMessage(
-      input.conversationId,
-      input.senderId,
+    const message = storage_service.save_message(
+      input.conversation_id,
+      input.sender_id,
       input.content
     );
     
-    logger.debug(`Saved message ${message.id} to conversation ${input.conversationId}`);
+    logger.debug(`Saved message ${message.id} to conversation ${input.conversation_id}`);
     
     return { message };
   } catch (error) {

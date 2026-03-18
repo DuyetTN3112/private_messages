@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "build": "svelte-check && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix"
   },
   "dependencies": {
     "lucide-svelte": "^0.474.0",

@@ -19,11 +19,11 @@ export interface UserStats {
  * - Count total connected sockets
  * - Count users in waiting room
  */
-export const getUserStats = (io: Server): UserStats => {
-  const online_users = io.engine.clientsCount || 0;
-  const waiting_users = Array.from(io.sockets.adapter.rooms.get('waiting') || []).length;
+export const get_user_stats = (io: Server): UserStats => {
+  const online_users = io.engine.clientsCount;
+  const waiting_users = Array.from(io.sockets.adapter.rooms.get('waiting') ?? []).length;
   
-  logger.info(`Thống kê người dùng: ${online_users} trực tuyến, ${waiting_users} đang chờ`);
+  logger.info(`Thống kê người dùng: ${String(online_users)} trực tuyến, ${String(waiting_users)} đang chờ`);
   
   return {
     online_users,

@@ -4,11 +4,11 @@
  * Business logic for ending a conversation and cleaning up resources.
  */
 
-import { storageService } from '../storage/repository';
+import { storage_service } from '../storage/repository';
 import { logger } from '../../utils/logger';
 
 export interface EndConversationInput {
-  readonly conversationId: string;
+  readonly conversation_id: string;
 }
 
 export interface EndConversationOutput {
@@ -24,18 +24,18 @@ export interface EndConversationOutput {
  * - Deletes all messages to free memory
  * - Returns false if conversation doesn't exist
  */
-export const endConversationUsecase = async (
+export const end_conversation_usecase = (
   input: EndConversationInput
-): Promise<EndConversationOutput> => {
-  logger.info(`Ending conversation ${input.conversationId}`);
+): EndConversationOutput => {
+  logger.info(`Ending conversation ${input.conversation_id}`);
   
   try {
-    const success = storageService.endConversation(input.conversationId);
+    const success = storage_service.end_conversation(input.conversation_id);
     
     if (success) {
-      logger.info(`Successfully ended conversation ${input.conversationId}`);
+      logger.info(`Successfully ended conversation ${input.conversation_id}`);
     } else {
-      logger.warn(`Conversation ${input.conversationId} not found`);
+      logger.warn(`Conversation ${input.conversation_id} not found`);
     }
     
     return { success };

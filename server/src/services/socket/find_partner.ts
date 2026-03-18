@@ -7,7 +7,7 @@
 
 import { Socket, Server } from 'socket.io';
 import { logger } from '../../utils/logger';
-import { matchUsers } from './match';
+import { match_users } from './match';
 import { update_user_state } from './user_state_broadcaster';
 
 // Singleton queue for matching
@@ -32,7 +32,7 @@ export interface FindPartnerOutput {
  * - Emit 'waiting' event to user
  * - Try to match with another waiting user
  */
-export const find_partner = async (input: FindPartnerInput): Promise<FindPartnerOutput> => {
+export const find_partner = (input: FindPartnerInput): FindPartnerOutput => {
   const { socket, io, socket_store } = input;
   
   logger.info(`Người dùng mới kết nối: ${socket.id}`);
@@ -52,7 +52,7 @@ export const find_partner = async (input: FindPartnerInput): Promise<FindPartner
   logger.info(`Đã thêm người dùng ${socket.id} vào hàng đợi. Tổng số người đang chờ: ${String(waiting_queue.length)}`);
   
   // Try to match users
-  await match_all_waiting_users(io, socket_store);
+  match_all_waiting_users(io, socket_store);
   
   return { added_to_queue: true };
 };
@@ -73,10 +73,10 @@ export const remove_from_waiting_queue = (socket_id: string): boolean => {
 /**
  * Match all waiting users in the queue
  */
-const match_all_waiting_users = async (
+const match_all_waiting_users = (
   io: Server, 
   socket_store: Record<string, 'waiting' | 'matched' | null>
-): Promise<void> => {
+): void => {
   logger.debug(`Bắt đầu ghép đôi tất cả người dùng. Hàng đợi hiện có ${String(waiting_queue.length)} người.`);
   let matched_count = 0;
   
@@ -91,7 +91,7 @@ const match_all_waiting_users = async (
         continue;
       }
 
-      const success = await match_two_users(socket1, socket2, io, socket_store);
+      const success = match_two_users(socket1, socket2, io, socket_store);
       if (success) {
         matched_count++;
       } else {
@@ -109,16 +109,16 @@ const match_all_waiting_users = async (
 /**
  * Match two specific users
  */
-const match_two_users = async (
+const match_two_users = (
   socket1: Socket, 
   socket2: Socket, 
   io: Server,
   socket_store: Record<string, 'waiting' | 'matched' | null>
-): Promise<boolean> => {
+): boolean => {
   try {
-    const { conversation } = await matchUsers({
-      user1SocketId: socket1.id,
-      user2SocketId: socket2.id
+    const { conversation } = match_users({
+      user1_socket_id: socket1.id,
+      user2_socket_id: socket2.id
     });
     
     socket1.emit('matched', {

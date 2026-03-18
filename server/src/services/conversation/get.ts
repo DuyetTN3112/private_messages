@@ -4,12 +4,12 @@
  * Business logic for retrieving a conversation by participant.
  */
 
-import { storageService } from '../storage/repository';
+import { storage_service } from '../storage/repository';
 import type { Conversation } from '../storage/repository';
 import { logger } from '../../utils/logger';
 
 export interface GetConversationInput {
-  readonly participantId: string;
+  readonly participant_id: string;
 }
 
 export interface GetConversationOutput {
@@ -23,18 +23,18 @@ export interface GetConversationOutput {
  * - Returns null if participant is not in any active conversation
  * - Only returns active conversations
  */
-export const getConversationUsecase = async (
+export const get_conversation_usecase = (
   input: GetConversationInput
-): Promise<GetConversationOutput> => {
-  logger.debug(`Finding conversation for participant ${input.participantId}`);
+): GetConversationOutput => {
+  logger.debug(`Finding conversation for participant ${input.participant_id}`);
   
   try {
-    const conversation = storageService.findConversationByParticipant(input.participantId);
+    const conversation = storage_service.find_conversation_by_participant(input.participant_id);
     
     if (conversation) {
-      logger.debug(`Found conversation ${conversation.id} for participant ${input.participantId}`);
+      logger.debug(`Found conversation ${conversation.id} for participant ${input.participant_id}`);
     } else {
-      logger.debug(`No active conversation found for participant ${input.participantId}`);
+      logger.debug(`No active conversation found for participant ${input.participant_id}`);
     }
     
     return { conversation };

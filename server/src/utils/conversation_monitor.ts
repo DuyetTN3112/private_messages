@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
 import { logger } from './logger';
-import { timeoutIdleConversations } from '../services/conversation/timeout';
+import { timeout_idle_conversations } from '../services/conversation/timeout';
 
 /**
  * Idle timeout duration (ms)
@@ -35,7 +35,7 @@ export class ConversationMonitor {
     }
     
     this.interval_id = setInterval(() => {
-      void this.check_idle_conversations();
+      this.check_idle_conversations();
     }, CHECK_INTERVAL);
   }
 
@@ -54,11 +54,11 @@ export class ConversationMonitor {
    * Check and handle idle conversations
    * Thin layer - calls service then sends socket notifications
    */
-  private async check_idle_conversations(): Promise<void> {
+  private check_idle_conversations(): void {
     try {
       // Business logic in service
-      const { idleConversations: idle_conversations } = await timeoutIdleConversations({
-        idleTimeoutMs: IDLE_TIMEOUT
+      const { idle_conversations } = timeout_idle_conversations({
+        idle_timeout_ms: IDLE_TIMEOUT
       });
       
       // Socket I/O only - notify participants

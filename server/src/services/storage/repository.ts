@@ -42,50 +42,44 @@ export interface StorageStats {
  */
 export class StorageService {
   private conversations: Map<string, Conversation>;
-  private participantIndex: Map<string, string>; // socketId -> conversationId
-  private messages: Map<string, Message[]>; // conversationId -> messages
-  private idCounter: number;
+  private participant_index: Map<string, string>;
+  private messages: Map<string, Message[]>;
+  private id_counter: number;
 
   constructor() {
     this.conversations = new Map();
-    this.participantIndex = new Map();
+    this.participant_index = new Map();
     this.messages = new Map();
-    this.idCounter = 0;
+    this.id_counter = 0;
   }
 
   /**
    * Generate unique ID
    * Combines timestamp + counter for uniqueness and sortability
    */
-  private generateId(): string {
-    this.idCounter++;
-    return `${Date.now()}-${this.idCounter}`;
+  private generate_id(): string {
+    this.id_counter++;
+    return `${String(Date.now())}-${String(this.id_counter)}`;
   }
 
   /**
    * Create a new conversation between two participants
    * 
-   * @throws Error if participants array doesn't contain exactly 2 members
    * @throws Error if either participant is already in an active conversation
    */
-  createConversation(participants: readonly [string, string]): Conversation {
-    // Validate input
-    if (participants.length !== 2) {
-      throw new Error('Conversation must have exactly 2 participants');
-    }
-
+  create_conversation(participants: readonly [string, string]): Conversation {
     const [participant1, participant2] = participants;
 
     // Check if participants are already in conversations
-    if (this.participantIndex.has(participant1)) {
+    if (this.participant_index.has(participant1)) {
       throw new Error(`Participant ${participant1} is already in a conversation`);
     }
-    if (this.participantIndex.has(participant2)) {
+    if (this.participant_index.has(participant2)) {
       throw new Error(`Participant ${participant2} is already in a conversation`);
     }
 
     // Create conversation
-    const id = this.generateId();
+    const id = this.generate_id();
     const conversation: Conversation = {
       id,
       participants: [participant1, participant2],
@@ -98,8 +92,8 @@ export class StorageService {
     this.conversations.set(id, conversation);
 
     // Index participants for O(1) lookup
-    this.participantIndex.set(participant1, id);
-    this.participantIndex.set(participant2, id);
+    this.participant_index.set(participant1, id);
+    this.participant_index.set(participant2, id);
 
     // Initialize empty messages array
     this.messages.set(id, []);
@@ -111,16 +105,16 @@ export class StorageService {
    * Find active conversation by participant socket ID
    * Returns null if participant is not in any active conversation
    */
-  findConversationByParticipant(socketId: string): Conversation | null {
-    const conversationId = this.participantIndex.get(socketId);
-    if (!conversationId) {
+  find_conversation_by_participant(socket_id: string): Conversation | null {
+    const conversation_id = this.participant_index.get(socket_id);
+    if (conversation_id === undefined || conversation_id === '') {
       return null;
     }
 
-    const conversation = this.conversations.get(conversationId);
+    const conversation = this.conversations.get(conversation_id);
     if (!conversation) {
       // Cleanup stale index if conversation doesn't exist
-      this.participantIndex.delete(socketId);
+      this.participant_index.delete(socket_id);
       return null;
     }
 
@@ -131,8 +125,8 @@ export class StorageService {
    * Update conversation's last activity timestamp
    * Used when messages are sent or other activity occurs
    */
-  updateConversationActivity(conversationId: string): void {
-    const conversation = this.conversations.get(conversationId);
+  update_conversation_activity(conversation_id: string): void {
+    const conversation = this.conversations.get(conversation_id);
     if (conversation) {
       conversation.last_activity = new Date();
     }
@@ -144,37 +138,37 @@ export class StorageService {
    * 
    * @throws Error if conversation doesn't exist
    */
-  saveMessage(conversationId: string, sender: string, content: string): Message {
-    const conversation = this.conversations.get(conversationId);
+  save_message(conversation_id: string, sender: string, content: string): Message {
+    const conversation = this.conversations.get(conversation_id);
     if (!conversation) {
-      throw new Error(`Conversation ${conversationId} not found`);
+      throw new Error(`Conversation ${conversation_id} not found`);
     }
 
     if (!conversation.is_active) {
-      throw new Error(`Conversation ${conversationId} is not active`);
+      throw new Error(`Conversation ${conversation_id} is not active`);
     }
 
     // Validate sender is a participant
     if (!conversation.participants.includes(sender)) {
-      throw new Error(`Sender ${sender} is not a participant in conversation ${conversationId}`);
+      throw new Error(`Sender ${sender} is not a participant in conversation ${conversation_id}`);
     }
 
     const message: Message = {
-      id: this.generateId(),
-      conversation_id: conversationId,
+      id: this.generate_id(),
+      conversation_id: conversation_id,
       sender,
       content,
       created_at: new Date(),
     };
 
     // Store message
-    const conversationMessages = this.messages.get(conversationId);
-    if (conversationMessages) {
-      conversationMessages.push(message);
+    const conversation_messages = this.messages.get(conversation_id);
+    if (conversation_messages) {
+      conversation_messages.push(message);
     }
 
     // Update activity
-    this.updateConversationActivity(conversationId);
+    this.update_conversation_activity(conversation_id);
 
     return message;
   }
@@ -183,8 +177,8 @@ export class StorageService {
    * Get all messages for a conversation
    * Returns empty array if conversation has no messages
    */
-  getMessagesByConversation(conversationId: string): readonly Message[] {
-    return this.messages.get(conversationId) ?? [];
+  get_messages_by_conversation(conversation_id: string): readonly Message[] {
+    return this.messages.get(conversation_id) ?? [];
   }
 
   /**
@@ -194,8 +188,8 @@ export class StorageService {
    * Note: Conversation object is kept (marked inactive) for stats/history,
    * but messages are deleted to free memory.
    */
-  endConversation(conversationId: string): boolean {
-    const conversation = this.conversations.get(conversationId);
+  end_conversation(conversation_id: string): boolean {
+    const conversation = this.conversations.get(conversation_id);
     if (!conversation) {
       return false;
     }
@@ -204,12 +198,12 @@ export class StorageService {
     conversation.is_active = false;
 
     // Remove participant indexes so they can join new conversations
-    conversation.participants.forEach((participantId) => {
-      this.participantIndex.delete(participantId);
+    conversation.participants.forEach((participant_id) => {
+      this.participant_index.delete(participant_id);
     });
 
     // Delete messages to free memory
-    this.messages.delete(conversationId);
+    this.messages.delete(conversation_id);
 
     // Keep conversation object for stats (but inactive)
     // Don't delete from conversations Map
@@ -221,13 +215,13 @@ export class StorageService {
    * Find all idle conversations
    * Used by conversation monitor to cleanup stale conversations
    * 
-   * @param idleThreshold - Date before which conversations are considered idle
+   * @param idle_threshold - Date before which conversations are considered idle
    */
-  findIdleConversations(idleThreshold: Date): readonly Conversation[] {
+  find_idle_conversations(idle_threshold: Date): readonly Conversation[] {
     const idle: Conversation[] = [];
 
     this.conversations.forEach((conversation) => {
-      if (conversation.is_active && conversation.last_activity < idleThreshold) {
+      if (conversation.is_active && conversation.last_activity < idle_threshold) {
         idle.push(conversation);
       }
     });
@@ -239,21 +233,21 @@ export class StorageService {
    * Get storage statistics
    * Useful for monitoring and debugging
    */
-  getStats(): StorageStats {
-    const activeConversations = Array.from(this.conversations.values()).filter(
+  get_stats(): StorageStats {
+    const active_conversations = Array.from(this.conversations.values()).filter(
       (c) => c.is_active
     ).length;
 
-    const totalMessages = Array.from(this.messages.values()).reduce(
+    const total_messages = Array.from(this.messages.values()).reduce(
       (sum, msgs) => sum + msgs.length,
       0
     );
 
     return {
       total_conversations: this.conversations.size,
-      active_conversations: activeConversations,
-      total_messages: totalMessages,
-      active_participants: this.participantIndex.size,
+      active_conversations: active_conversations,
+      total_messages: total_messages,
+      active_participants: this.participant_index.size,
     };
   }
 
@@ -263,11 +257,11 @@ export class StorageService {
    */
   clear(): void {
     this.conversations.clear();
-    this.participantIndex.clear();
+    this.participant_index.clear();
     this.messages.clear();
-    this.idCounter = 0;
+    this.id_counter = 0;
   }
 }
 
 // Export singleton instance
-export const storageService = new StorageService();
+export const storage_service = new StorageService();

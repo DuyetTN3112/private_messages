@@ -5,7 +5,7 @@
  * Validates participants and delegates to storage layer.
  */
 
-import { storageService } from '../storage/repository';
+import { storage_service } from '../storage/repository';
 import type { Conversation } from '../storage/repository';
 import { logger } from '../../utils/logger';
 
@@ -26,14 +26,14 @@ export interface CreateConversationOutput {
  * 
  * @throws Error if validation fails
  */
-export const createConversationUsecase = async (
+export const create_conversation_usecase = (
   input: CreateConversationInput
-): Promise<CreateConversationOutput> => {
+): CreateConversationOutput => {
   logger.info(`Creating conversation between ${input.participants[0]} and ${input.participants[1]}`);
   
   try {
     // Business logic: Create conversation
-    const conversation = storageService.createConversation(input.participants);
+    const conversation = storage_service.create_conversation(input.participants);
     
     logger.info(`Created conversation ${conversation.id}`);
     
