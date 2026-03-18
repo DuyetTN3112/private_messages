@@ -14,16 +14,136 @@ const URL_REGEX = /(@?https?:\/\/[^\s]+)/gi;
 const VALID_CHARS_REGEX = /^[\p{L}\p{N}\p{P}\p{Zs}\p{So}\p{Mn}\p{Mc}]+$/u;
 
 /**
- * Regex phát hiện quá nhiều dấu nguyên âm, có thể là spam
- * Thay đổi: Sử dụng \p{M} (Unicode Marks) để bắt tất cả các dấu kết hợp
- * thay vì liệt kê thủ công range gây lỗi ESLint.
- */
-const EXCESSIVE_DIACRITICS_REGEX = /\p{M}{10,}/u;
-
-/**
  * Giới hạn độ dài tin nhắn
  */
 const MAX_MESSAGE_LENGTH = 1000;
+
+/**
+ * Giới hạn số combining marks tối đa trên MỖI ký tự cơ sở
+ * Chống Zalgo text / Combining Characters DoS Attack
+ * Tiếng Việt thường chỉ cần tối đa 2-3 dấu (ế = e + ́ + ̂)
+ */
+const MAX_COMBINING_MARKS_PER_CHAR = 5;
+
+/**
+ * Giới hạn tổng số combining marks trong toàn bộ tin nhắn
+ * Ngăn chặn việc gửi tin nhắn với quá nhiều dấu tổng cộng
+ */
+const MAX_TOTAL_COMBINING_MARKS = 100;
+
+/**
+ * Giới hạn tỷ lệ combining marks / ký tự cơ sở
+ * Tin nhắn bình thường không nên có tỷ lệ cao
+ */
+const MAX_COMBINING_RATIO = 2.0;
+
+/**
+ * Kiểm tra và đếm combining characters trong chuỗi
+ * Chống Zalgo text / Unicode Combining Characters DoS Attack
+ * 
+ * @returns Object chứa thông tin về combining marks
+ */
+const analyze_combining_marks = (text: string): {
+  total_combining: number;
+  max_per_char: number;
+  base_char_count: number;
+  is_attack: boolean;
+  reason?: string;
+} => {
+  let total_combining = 0;
+  let max_per_char = 0;
+  let current_combining_count = 0;
+  let base_char_count = 0;
+  
+  for (const char of text) {
+    // Check if character is a combining mark (Unicode category M)
+    // This includes: Mn (nonspacing), Mc (spacing combining), Me (enclosing)
+    const is_combining = /\p{M}/u.test(char);
+    
+    if (is_combining) {
+      current_combining_count++;
+      total_combining++;
+      
+      // Early exit nếu phát hiện tấn công
+      if (current_combining_count > MAX_COMBINING_MARKS_PER_CHAR) {
+        return {
+          total_combining,
+          max_per_char: current_combining_count,
+          base_char_count,
+          is_attack: true,
+          reason: `Quá nhiều dấu kết hợp trên một ký tự (${String(current_combining_count)} > ${String(MAX_COMBINING_MARKS_PER_CHAR)})`
+        };
+      }
+    } else {
+      // Ký tự cơ sở mới
+      max_per_char = Math.max(max_per_char, current_combining_count);
+      current_combining_count = 0;
+      base_char_count++;
+    }
+  }
+  
+  // Cập nhật max cho ký tự cuối cùng
+  max_per_char = Math.max(max_per_char, current_combining_count);
+  
+  // Kiểm tra tổng số combining marks
+  if (total_combining > MAX_TOTAL_COMBINING_MARKS) {
+    return {
+      total_combining,
+      max_per_char,
+      base_char_count,
+      is_attack: true,
+      reason: `Quá nhiều dấu kết hợp tổng cộng (${String(total_combining)} > ${String(MAX_TOTAL_COMBINING_MARKS)})`
+    };
+  }
+  
+  // Kiểm tra tỷ lệ combining/base
+  if (base_char_count > 0) {
+    const ratio = total_combining / base_char_count;
+    if (ratio > MAX_COMBINING_RATIO) {
+      return {
+        total_combining,
+        max_per_char,
+        base_char_count,
+        is_attack: true,
+        reason: `Tỷ lệ dấu kết hợp quá cao (${ratio.toFixed(2)} > ${String(MAX_COMBINING_RATIO)})`
+      };
+    }
+  }
+  
+  return {
+    total_combining,
+    max_per_char,
+    base_char_count,
+    is_attack: false
+  };
+};
+
+/**
+ * Loại bỏ các combining marks thừa để làm sạch chuỗi
+ * Giữ lại tối đa MAX_COMBINING_MARKS_PER_CHAR dấu cho mỗi ký tự
+ */
+const strip_excessive_combining = (text: string): string => {
+  let result = '';
+  let current_combining_count = 0;
+  
+  for (const char of text) {
+    const is_combining = /\p{M}/u.test(char);
+    
+    if (is_combining) {
+      // Chỉ giữ lại tối đa MAX_COMBINING_MARKS_PER_CHAR dấu
+      if (current_combining_count < MAX_COMBINING_MARKS_PER_CHAR) {
+        result += char;
+        current_combining_count++;
+      }
+      // Bỏ qua các dấu thừa
+    } else {
+      result += char;
+      current_combining_count = 0;
+    }
+  }
+  
+  return result;
+};
 
 /**
  * Kiểm tra ký tự lặp lại quá nhiều lần liên tiếp
@@ -50,10 +170,8 @@ const has_repeated_words = (text: string, max_repeats: number = 3): boolean => {
   let repeat_count = 1;
   
   for (let i = 0; i < words.length; i++) {
-    // FIX: TypeScript error ts(2322)
-    // Kiểm tra undefined để đảm bảo kiểu dữ liệu là string
     const word = words[i];
-    if (!word) continue;
+    if (word === undefined || word === '') continue;
 
     if (word === current_word) {
       repeat_count++;
@@ -76,13 +194,8 @@ const extract_urls = (message: string): { processed_message: string, urls: strin
   const urls: string[] = [];
   const processed_message = message.replace(URL_REGEX, (match) => {
     urls.push(match);
-    console.log(`URL được phát hiện và bảo vệ: ${match}`);
     return `[URL_${String(urls.length - 1)}]`;
   });
-  
-  if (urls.length > 0) {
-    console.log(`Đã trích xuất ${String(urls.length)} URL từ tin nhắn.`);
-  }
   
   return { processed_message, urls };
 };
@@ -101,11 +214,6 @@ const restore_urls = (processed_message: string, urls: string[]): string => {
     if (typeof url !== 'string') continue;
     
     restored = restored.replace(`[URL_${String(i)}]`, url);
-    console.log(`URL đã được khôi phục: ${url}`);
-  }
-  
-  if (urls.length > 0) {
-    console.log(`Đã khôi phục ${String(urls.length)} URL trong tin nhắn.`);
   }
   
   return restored;
@@ -122,7 +230,13 @@ export const validate_message = (message: string): void => {
     throw new ApiError('Nội dung tin nhắn không hợp lệ', 400);
   }
   
-  // Kiểm tra độ dài tin nhắn
+  // Kiểm tra độ dài tin nhắn (byte length để tránh DoS bằng unicode)
+  const byte_length = new TextEncoder().encode(message).length;
+  if (byte_length > MAX_MESSAGE_LENGTH * 4) { // UTF-8 tối đa 4 bytes/char
+    throw new ApiError('Tin nhắn quá dài', 400);
+  }
+  
+  // Kiểm tra độ dài tin nhắn (character length)
   if (message.length > MAX_MESSAGE_LENGTH) {
     throw new ApiError(`Tin nhắn không được vượt quá ${String(MAX_MESSAGE_LENGTH)} ký tự`, 400);
   }
@@ -132,7 +246,14 @@ export const validate_message = (message: string): void => {
     throw new ApiError('Tin nhắn không được để trống', 400);
   }
   
-  // Trích xuất URL trước khi kiểm tra
+  // 🚨 KIỂM TRA COMBINING CHARACTERS ATTACK (Zalgo text)
+  // Phải check TRƯỚC khi extract URLs vì attack có thể trong bất kỳ phần nào
+  const combining_analysis = analyze_combining_marks(message);
+  if (combining_analysis.is_attack) {
+    throw new ApiError(`Tin nhắn chứa ký tự không hợp lệ: ${combining_analysis.reason ?? 'Phát hiện tấn công'}`, 400);
+  }
+  
+  // Trích xuất URL trước khi kiểm tra các rule khác
   const { processed_message } = extract_urls(message);
   
   // Kiểm tra ký tự lặp lại quá nhiều
@@ -143,11 +264,6 @@ export const validate_message = (message: string): void => {
   // Kiểm tra từ lặp lại quá nhiều
   if (has_repeated_words(processed_message)) {
     throw new ApiError('Tin nhắn chứa quá nhiều từ lặp lại liên tiếp', 400);
-  }
-  
-  // Kiểm tra regex dấu nhiều
-  if (EXCESSIVE_DIACRITICS_REGEX.test(processed_message)) {
-    throw new ApiError('Tin nhắn chứa quá nhiều dấu', 400);
   }
   
   // Kiểm tra ký tự hợp lệ - chỉ áp dụng cho phần không phải URL
@@ -181,6 +297,10 @@ export const sanitize_message = (message: string): string => {
   
   // Cắt bớt nếu quá dài
   let sanitized = message.slice(0, MAX_MESSAGE_LENGTH);
+  
+  // 🚨 LOẠI BỎ COMBINING MARKS THỪA TRƯỚC
+  // Đây là bước quan trọng để chống DoS attack
+  sanitized = strip_excessive_combining(sanitized);
   
   // Trích xuất URL trước khi làm sạch
   const { processed_message, urls } = extract_urls(sanitized);
