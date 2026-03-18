@@ -6,7 +6,7 @@
     children?: import('svelte').Snippet;
   }
 
-  let { className = '', children, ...rest }: Props = $props();
+  const { className = '', children, ...rest }: Props = $props();
 </script>
 
 <button 

@@ -136,8 +136,8 @@ const strip_excessive_combining = (text: string): string => {
 /**
  * Kiểm tra ký tự lặp lại quá nhiều lần liên tiếp
  */
-const has_excessive_repeats = (text: string, max_repeats: number = 5): boolean => {
-  const repeated_char_regex = new RegExp(`(.)\\1{${max_repeats},}`, 'u');
+const has_excessive_repeats = (text: string, max_repeats = 5): boolean => {
+  const repeated_char_regex = new RegExp(`(.)\\1{${String(max_repeats)},}`, 'u');
   return repeated_char_regex.test(text);
 };
 
@@ -170,7 +170,7 @@ const extract_urls = (message: string): { processed_message: string, urls: strin
   const urls: string[] = [];
   const processed_message = message.replace(URL_REGEX, (match) => {
     urls.push(match);
-    return `[URL_${urls.length - 1}]`;
+    return `[URL_${String(urls.length - 1)}]`;
   });
   
   return { processed_message, urls };
@@ -182,7 +182,7 @@ const extract_urls = (message: string): { processed_message: string, urls: strin
 const restore_urls = (processed_message: string, urls: string[]): string => {
   let restored = processed_message;
   for (let i = 0; i < urls.length; i++) {
-    restored = restored.replace(`[URL_${i}]`, urls[i]);
+    restored = restored.replace(`[URL_${String(i)}]`, urls[i]);
   }
   
   return restored;
@@ -219,7 +219,7 @@ export const validate_message = (message: string): void => {
   
   // Kiểm tra độ dài tin nhắn
   if (message.length > MAX_MESSAGE_LENGTH) {
-    throw new ValidationError(`Tin nhắn không được vượt quá ${MAX_MESSAGE_LENGTH} ký tự`);
+    throw new ValidationError(`Tin nhắn không được vượt quá ${String(MAX_MESSAGE_LENGTH)} ký tự`);
   }
   
   // Kiểm tra tin nhắn rỗng hoặc chỉ có khoảng trắng
@@ -285,7 +285,7 @@ export const sanitize_message = (message: string): string => {
   let cleaned = processed_message.replace(/[^\p{L}\p{N}\p{P}\p{Zs}\p{So}\p{Mn}\p{Mc}]/gu, '');
   
   // Xử lý ký tự lặp lại
-  cleaned = cleaned.replace(/(.)\1{5,}/gu, (_, char) => char.repeat(5));
+  cleaned = cleaned.replace(/(.)\1{5,}/gu, (_, char: string) => char.repeat(5));
   
   // Khôi phục URL
   sanitized = restore_urls(cleaned, urls);

@@ -3,7 +3,7 @@
     numberOfParticles?: number;
   }
 
-  let { numberOfParticles = 15 }: Props = $props();
+  const { numberOfParticles = 15 }: Props = $props();
 </script>
 
 <div class="background-container">

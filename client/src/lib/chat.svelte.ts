@@ -49,11 +49,11 @@ export class ChatState {
     this.initSocket();
   }
 
-  setContainer(el: HTMLElement) {
+  setContainer(el: HTMLElement): void {
     this.message_container = el;
   }
 
-  showToast(msg: string, duration = 3000) {
+  showToast(msg: string, duration = 3000): void {
     this.toast_message = msg;
     this.show_toast = true;
     setTimeout(() => {
@@ -61,14 +61,14 @@ export class ChatState {
     }, duration);
   }
 
-  async scrollToBottom() {
+  async scrollToBottom(): Promise<void> {
     await tick();
     if (this.message_container) {
       this.message_container.scrollTop = this.message_container.scrollHeight;
     }
   }
 
-  send_message = (content: string) => {
+  send_message = (content: string): void => {
     if (content && this.is_connected) {
       try {
         validate_message(content);
@@ -84,18 +84,16 @@ export class ChatState {
     }
   };
 
-  showReactionPicker = (msg: Message) => {
+  showReactionPicker = (msg: Message): void => {
     this.reactionPickerMessage = msg;
   };
 
-  addReaction = (msg: Message, emoji: string) => {
+  addReaction = (msg: Message, emoji: string): void => {
     const msgIndex = this.messages.indexOf(msg);
     if (msgIndex !== -1) {
       // Create a shallow copy of the message to trigger reactivity
       const currentMsg = { ...this.messages[msgIndex] };
-      if (!currentMsg.reactions) {
-        currentMsg.reactions = [];
-      }
+      currentMsg.reactions ??= [];
       
       if (currentMsg.reactions.includes(emoji)) {
         currentMsg.reactions = currentMsg.reactions.filter((r) => r !== emoji);
@@ -117,16 +115,16 @@ export class ChatState {
     this.reactionPickerMessage = null;
   };
 
-  find_new_partner = () => {
+  find_new_partner = (): void => {
     socket.emit('find-new-partner');
     this.is_waiting = true;
     this.partner_disconnected = false;
   };
 
-  private initSocket() {
+  private initSocket(): void {
     socket.on('connect', () => {
       this.is_connected = true;
-      this.socket_id = socket.id!;
+      this.socket_id = socket.id ?? '';
     });
 
     socket.on('disconnect', () => {
@@ -175,12 +173,12 @@ export class ChatState {
 
     socket.on('receive-message', (msg: { sender?: string; sender_id?: string; content: string; created_at: string }) => {
       this.messages = [...this.messages, {
-        sender_id: msg.sender || msg.sender_id || '',
+        sender_id: msg.sender ?? msg.sender_id ?? '',
         content: msg.content,
         created_at: msg.created_at,
         reactions: []
       }];
-      this.scrollToBottom();
+      void this.scrollToBottom();
     });
 
     socket.on('receive-reaction', (data: {message_index: number, emoji: string, sender_id: string}) => {
@@ -195,7 +193,7 @@ export class ChatState {
       if (message_index >= 0 && message_index < this.messages.length) {
         // Clone message for reactivity
         const msg = { ...this.messages[message_index] };
-        if (!msg.reactions) msg.reactions = [];
+        msg.reactions ??= [];
         
         if (msg.reactions.includes(emoji)) {
           msg.reactions = msg.reactions.filter(r => r !== emoji);
@@ -220,7 +218,7 @@ export class ChatState {
     });
   }
 
-  cleanup() {
+  cleanup(): void {
     socket.off('connect');
     socket.off('disconnect');
     socket.off('waiting');

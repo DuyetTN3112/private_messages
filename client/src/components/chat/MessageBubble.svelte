@@ -7,12 +7,12 @@
     index: number;
   }
 
-  let { msg, index }: Props = $props();
+  const { msg, index }: Props = $props();
 
-  let isMe = $derived(msg.sender_id === chatState.socket_id);
+  const isMe = $derived(msg.sender_id === chatState.socket_id);
   
   // Format content to linkify URLs
-  let formattedContent = $derived.by(() => {
+  const formattedContent = $derived.by(() => {
     if (!msg.content) return '';
     const urlRegex = /(@?https?:\/\/[^\s]+)/gi;
     return msg.content.replace(urlRegex, (url: string) => {
