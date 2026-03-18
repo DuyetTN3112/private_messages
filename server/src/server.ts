@@ -2,16 +2,13 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import { Server, Socket } from 'socket.io';
-import { setup_socket_server } from './controllers/socket';
-import routes from './routes';
+import { setup_socket_server } from './controllers/socket/setup_socket_server';
+import routes from './routes/index';
 import { error_handler } from './middleware/error_handler';
-import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { setup_conversation_monitor } from './utils/conversation_monitor';
 import { storage_service } from './services/storage/repository';
-
-// Cấu hình dotenv
-dotenv.config();
+import { DEFAULT_PORT } from './constants/config';
 
 // Tạo Express app
 const app = express();
@@ -66,16 +63,16 @@ setup_socket_server(io);
 // Khởi động monitor cho các cuộc trò chuyện không hoạt động
 setup_conversation_monitor(io);
 
-// Khởi động server - KHÔNG CẦN database connection!
-const SERVER_PORT = process.env['PORT'] ?? process.env['SERVER_PORT'] ?? 3000;
+// Khởi động server
+const SERVER_PORT = process.env['PORT'] ?? DEFAULT_PORT;
 
 server.listen(SERVER_PORT, () => {
   logger.info(`Server đang chạy trên cổng ${String(SERVER_PORT)}`);
-  logger.info('✅ Sử dụng in-memory storage - ZERO external dependencies');
+  logger.info('✅ In-memory storage - ZERO external dependencies');
   logger.info(`📊 Storage stats: ${JSON.stringify(storage_service.get_stats())}`);
 });
 
-// Graceful shutdown - cleanup in-memory data
+// Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, cleaning up...');
   storage_service.clear();
@@ -85,5 +82,4 @@ process.on('SIGTERM', () => {
   });
 });
 
-// Export cho testing
 export { app, server }; 

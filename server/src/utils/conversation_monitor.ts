@@ -1,16 +1,8 @@
 import { Server } from 'socket.io';
 import { logger } from './logger';
 import { timeout_idle_conversations } from '../services/conversation/timeout';
-
-/**
- * Idle timeout duration (ms)
- */
-const IDLE_TIMEOUT = 60 * 1000; // 1 minute
-
-/**
- * Check interval (ms)
- */
-const CHECK_INTERVAL = 10 * 1000; // 10 seconds
+import { IDLE_TIMEOUT_MS, IDLE_CHECK_INTERVAL_MS } from '../constants/config';
+import { SERVER_EVENTS } from '../constants/socket';
 
 /**
  * Conversation Monitor
@@ -24,9 +16,6 @@ export class ConversationMonitor {
     this.io = io;
   }
 
-  /**
-   * Start monitoring conversations
-   */
   start(): void {
     logger.info('Starting idle conversation monitoring');
     
@@ -36,12 +25,9 @@ export class ConversationMonitor {
     
     this.interval_id = setInterval(() => {
       this.check_idle_conversations();
-    }, CHECK_INTERVAL);
+    }, IDLE_CHECK_INTERVAL_MS);
   }
 
-  /**
-   * Stop monitoring conversations
-   */
   stop(): void {
     if (this.interval_id) {
       clearInterval(this.interval_id);
@@ -50,24 +36,18 @@ export class ConversationMonitor {
     }
   }
 
-  /**
-   * Check and handle idle conversations
-   * Thin layer - calls service then sends socket notifications
-   */
   private check_idle_conversations(): void {
     try {
-      // Business logic in service
       const { idle_conversations } = timeout_idle_conversations({
-        idle_timeout_ms: IDLE_TIMEOUT
+        idle_timeout_ms: IDLE_TIMEOUT_MS
       });
       
-      // Socket I/O only - notify participants
       for (const conversation of idle_conversations) {
         for (const participant_id of conversation.participants) {
           const socket = this.io.sockets.sockets.get(participant_id);
           if (socket) {
             logger.info(`Notifying user ${participant_id} of timeout`);
-            socket.emit('conversation-timeout', {
+            socket.emit(SERVER_EVENTS.CONVERSATION_TIMEOUT, {
               conversation_id: conversation.id,
               message: 'Cuộc trò chuyện đã kết thúc do không hoạt động trong 1 phút'
             });
@@ -80,9 +60,6 @@ export class ConversationMonitor {
   }
 }
 
-/**
- * Create and start conversation monitor
- */
 export const setup_conversation_monitor = (io: Server): ConversationMonitor => {
   const monitor = new ConversationMonitor(io);
   monitor.start();

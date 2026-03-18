@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
+import { IS_PRODUCTION } from '../constants/config';
 
 /**
  * Custom error class với status code
@@ -7,7 +8,7 @@ import { logger } from '../utils/logger';
 export class ApiError extends Error {
   status_code: number;
   
-  constructor(message: string, status_code: number = 500) {
+  constructor(message: string, status_code = 500) {
     super(message);
     this.name = this.constructor.name;
     this.status_code = status_code;
@@ -27,19 +28,15 @@ export const not_found_handler = (req: Request, _res: Response, next: NextFuncti
  * Middleware xử lý các lỗi chung trong ứng dụng
  */
 export const error_handler = (err: Error | ApiError, _req: Request, res: Response, _next: NextFunction): void => {
-  // Lấy status code nếu có, mặc định là 500
   const status_code = (err as ApiError).status_code || 500;
   
-  // Log lỗi với các thông tin phù hợp
   logger.error(`${String(status_code)} - ${err.message}`, err);
   
-  // Format lỗi để trả về client
   const error_response = {
     message: err.message,
     status: status_code
   };
   
-  // Trả về response
   res.status(status_code).json(error_response);
 };
 
@@ -51,9 +48,7 @@ export const unhandled_rejection_handler = (
   _promise: Promise<unknown>
 ): void => {
   logger.error('Unhandled Rejection at Promise', reason);
-  // Thông thường ở đây nên kết thúc process với exit code 1
-  // Nhưng trong môi trường production, có thể chỉ log và tiếp tục
-  if (process.env['NODE_ENV'] !== 'production') {
+  if (!IS_PRODUCTION) {
     console.error('Shutting down due to unhandled promise rejection');
     process.exit(1);
   }
@@ -64,7 +59,6 @@ export const unhandled_rejection_handler = (
  */
 export const uncaught_exception_handler = (err: Error): void => {
   logger.error('Uncaught Exception', err);
-  // Trong trường hợp có uncaught exception, nên kết thúc process
   process.exit(1);
 };
 

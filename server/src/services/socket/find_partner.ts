@@ -1,7 +1,5 @@
 /**
  * Find Partner Service
- * 
- * Business logic for matching users into conversations.
  * Manages the waiting queue and matching algorithm.
  */
 
@@ -9,9 +7,8 @@ import { Socket, Server } from 'socket.io';
 import { logger } from '../../utils/logger';
 import { match_users } from './match';
 import { update_user_state } from './user_state_broadcaster';
+import { SERVER_EVENTS } from '../../constants/socket';
 
-// Singleton queue for matching
-// In a real app with multiple instances, this should be Redis
 export const waiting_queue: Socket[] = [];
 
 export interface FindPartnerInput {
@@ -24,42 +21,27 @@ export interface FindPartnerOutput {
   readonly added_to_queue: boolean;
 }
 
-/**
- * Find a partner for the user
- * 
- * Business Rules:
- * - Add user to waiting queue if not already in
- * - Emit 'waiting' event to user
- * - Try to match with another waiting user
- */
 export const find_partner = (input: FindPartnerInput): FindPartnerOutput => {
   const { socket, io, socket_store } = input;
   
   logger.info(`Người dùng mới kết nối: ${socket.id}`);
   
-  // Check if user is already in queue
   if (waiting_queue.find(s => s.id === socket.id)) {
     return { added_to_queue: false };
   }
 
-  // Add user to queue
   waiting_queue.push(socket);
-  socket.emit('waiting');
+  socket.emit(SERVER_EVENTS.WAITING);
   
-  // Update state
   update_user_state(socket.id, 'waiting', io, socket_store);
   
   logger.info(`Đã thêm người dùng ${socket.id} vào hàng đợi. Tổng số người đang chờ: ${String(waiting_queue.length)}`);
   
-  // Try to match users
   match_all_waiting_users(io, socket_store);
   
   return { added_to_queue: true };
 };
 
-/**
- * Remove user from waiting queue
- */
 export const remove_from_waiting_queue = (socket_id: string): boolean => {
   const index = waiting_queue.findIndex(s => s.id === socket_id);
   if (index !== -1) {
@@ -70,9 +52,6 @@ export const remove_from_waiting_queue = (socket_id: string): boolean => {
   return false;
 };
 
-/**
- * Match all waiting users in the queue
- */
 const match_all_waiting_users = (
   io: Server, 
   socket_store: Record<string, 'waiting' | 'matched' | null>
@@ -106,9 +85,6 @@ const match_all_waiting_users = (
   }
 };
 
-/**
- * Match two specific users
- */
 const match_two_users = (
   socket1: Socket, 
   socket2: Socket, 
@@ -121,12 +97,12 @@ const match_two_users = (
       user2_socket_id: socket2.id
     });
     
-    socket1.emit('matched', {
+    socket1.emit(SERVER_EVENTS.MATCHED, {
       conversation_id: conversation.id,
       partner_id: socket2.id
     });
     
-    socket2.emit('matched', {
+    socket2.emit(SERVER_EVENTS.MATCHED, {
       conversation_id: conversation.id,
       partner_id: socket1.id
     });
@@ -140,8 +116,8 @@ const match_two_users = (
     return true;
   } catch (error) {
     logger.error('Lỗi khi ghép đôi người dùng:', error);
-    socket1.emit('error', { message: 'Có lỗi xảy ra khi ghép đôi' });
-    socket2.emit('error', { message: 'Có lỗi xảy ra khi ghép đôi' });
+    socket1.emit(SERVER_EVENTS.ERROR, { message: 'Có lỗi xảy ra khi ghép đôi' });
+    socket2.emit(SERVER_EVENTS.ERROR, { message: 'Có lỗi xảy ra khi ghép đôi' });
     return false;
   }
 };
