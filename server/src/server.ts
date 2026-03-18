@@ -9,13 +9,9 @@ import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { setup_conversation_monitor } from './utils/conversation_monitor';
 import { storageService } from './services/storage/repository';
-import { setup_cqrs } from './config/cqrs_setup';
 
 // Cấu hình dotenv
 dotenv.config();
-
-// Initialize CQRS
-setup_cqrs();
 
 // Tạo Express app
 const app = express();
