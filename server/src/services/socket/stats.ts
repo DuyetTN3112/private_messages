@@ -5,7 +5,6 @@
  */
 
 import { Server } from 'socket.io';
-import { logger } from '../../utils/logger';
 
 export interface UserStats {
   readonly online_users: number;
@@ -19,11 +18,9 @@ export interface UserStats {
  * - Count total connected sockets
  * - Count users in waiting room
  */
-export const get_user_stats = (io: Server): UserStats => {
+export const get_user_stats = (io: Server, waiting_users_override?: number): UserStats => {
   const online_users = io.engine.clientsCount;
-  const waiting_users = Array.from(io.sockets.adapter.rooms.get('waiting') ?? []).length;
-  
-  logger.info(`Thống kê người dùng: ${String(online_users)} trực tuyến, ${String(waiting_users)} đang chờ`);
+  const waiting_users = waiting_users_override ?? 0;
   
   return {
     online_users,

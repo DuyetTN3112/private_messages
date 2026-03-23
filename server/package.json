@@ -6,6 +6,21 @@
     "express": "^5.1.0",
     "socket.io": "^4.8.1"
   },
+  "scripts": {
+    "build": "tsc",
+    "dev": "nodemon --exec ts-node --transpile-only src/server.ts",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:benchmark:burst": "NODE_ENV=production RUN_1000_BURST_BENCHMARK=true vitest run src/integration/socket.benchmark.test.ts",
+    "test:integration:behavior": "NODE_ENV=production RUN_1000_BEHAVIOR_TEST=true vitest run src/integration/socket.integration.test.ts -t \"realistic chat and reaction behavior\"",
+    "test:integration:adversarial": "NODE_ENV=production RUN_1000_ADVERSARIAL_TEST=true vitest run src/integration/socket.integration.test.ts -t \"isolates abusive behavior\"",
+    "test:integration:heavy:parallel": "sh -c 'NODE_ENV=production RUN_1000_BEHAVIOR_TEST=true vitest run src/integration/socket.integration.test.ts -t \"realistic chat and reaction behavior\" & NODE_ENV=production RUN_1000_ADVERSARIAL_TEST=true vitest run src/integration/socket.integration.test.ts -t \"isolates abusive behavior\" & wait'",
+    "test:integration:all:parallel": "sh -c 'NODE_ENV=production RUN_1000_BURST_BENCHMARK=true vitest run src/integration/socket.benchmark.test.ts & NODE_ENV=production RUN_1000_BEHAVIOR_TEST=true vitest run src/integration/socket.integration.test.ts -t \"realistic chat and reaction behavior\" & NODE_ENV=production RUN_1000_ADVERSARIAL_TEST=true vitest run src/integration/socket.integration.test.ts -t \"isolates abusive behavior\" & wait'",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "type-check": "tsc --noEmit"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@types/cors": "^2.8.19",
@@ -13,16 +28,10 @@
     "@types/node": "^24.0.14",
     "eslint": "^9.39.2",
     "nodemon": "^3.1.10",
+    "socket.io-client": "^4.8.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.51.0"
-  },
-  "scripts": {
-    "build": "tsc",
-    "dev": "nodemon --exec ts-node --transpile-only src/server.ts",
-    "start": "node dist/server.js",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix",
-    "type-check": "tsc --noEmit"
+    "typescript-eslint": "^8.51.0",
+    "vitest": "^3.2.4"
   }
 }

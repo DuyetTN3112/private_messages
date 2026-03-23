@@ -2,7 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { cleanup_socket_store, socket_rate_limiter } from '../../middleware/socket_rate_limiter';
 import { logger } from '../../utils/logger';
 
-import { find_partner, remove_from_waiting_queue } from '../../services/socket/find_partner';
+import { find_partner, remove_from_waiting_queue, waiting_queue } from '../../services/socket/find_partner';
 import { send_message } from '../../services/socket/send_message';
 import { add_reaction } from '../../services/socket/reaction';
 import { get_user_stats } from '../../services/socket/stats';
@@ -17,9 +17,9 @@ import { STATS_BROADCAST_INTERVAL_MS } from '../../constants/config';
  */
 export const setup_socket_server = (
   io: Server
-): void => {
-  setInterval(() => {
-    const stats = get_user_stats(io);
+): { cleanup: () => void } => {
+  const stats_interval = setInterval(() => {
+    const stats = get_user_stats(io, waiting_queue.length);
     io.emit(SERVER_EVENTS.USER_STATS, {
       online_users: stats.online_users,
       waiting_users: stats.waiting_users
@@ -32,7 +32,7 @@ export const setup_socket_server = (
       return;
     }
     
-    logger.info(`User connected: ${socket.id}`);
+    logger.debug(`User connected: ${socket.id}`);
     
     const req = socket.request as AppRequest;
     const socket_store = req.app.get('socketStore') as SocketStoreType | undefined ?? {};
@@ -47,7 +47,7 @@ export const setup_socket_server = (
         });
         
         io.to(result.conversation_id).emit(SERVER_EVENTS.RECEIVE_MESSAGE, result.message);
-        logger.info(`Broadcasted message ${result.message.id} to room ${result.conversation_id}`);
+        logger.debug(`Broadcasted message ${result.message.id} to room ${result.conversation_id}`);
       } catch (error: unknown) {
         logger.error(`Error processing message from ${socket.id}:`, error);
         const error_message = error instanceof Error ? error.message : 'Có lỗi xảy ra khi gửi tin nhắn';
@@ -59,7 +59,7 @@ export const setup_socket_server = (
       const { conversation_id, message_index, emoji } = data;
       
       try {
-        add_reaction({
+        const result = add_reaction({
           socket_id: socket.id,
           conversation_id,
           message_index,
@@ -68,11 +68,8 @@ export const setup_socket_server = (
         
         io.to(conversation_id).emit(SERVER_EVENTS.RECEIVE_REACTION, {
           message_index,
-          emoji,
-          sender_id: socket.id
+          reactions: result.reactions
         });
-        
-        logger.info(`Broadcasted reaction to room ${conversation_id}`);
       } catch (error) {
         logger.error('Error handling reaction:', error);
         socket.emit(SERVER_EVENTS.ERROR, { message: 'Có lỗi xảy ra khi xử lý phản ứng' });
@@ -80,12 +77,12 @@ export const setup_socket_server = (
     });
     
     socket.on(SOCKET_EVENTS.FIND_NEW_PARTNER, () => {
-      logger.info(`User ${socket.id} requesting new partner`);
+      logger.debug(`User ${socket.id} requesting new partner`);
       find_partner({ socket, io, socket_store });
     });
     
     socket.on(SOCKET_EVENTS.DISCONNECT, () => {
-      logger.info(`Người dùng ngắt kết nối: ${socket.id}`);
+      logger.debug(`Người dùng ngắt kết nối: ${socket.id}`);
       
       remove_from_waiting_queue(socket.id);
       
@@ -109,4 +106,10 @@ export const setup_socket_server = (
       cleanup_socket_store(socket.id);
     });
   });
+
+  return {
+    cleanup: (): void => {
+      clearInterval(stats_interval);
+    }
+  };
 };

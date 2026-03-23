@@ -6,6 +6,7 @@
 
 import { Server, Socket } from 'socket.io';
 import { logger } from '../../utils/logger';
+import { storage_service, type MessageReaction } from '../storage/repository';
 
 export interface AddReactionInput {
   readonly socket_id: string;
@@ -17,6 +18,7 @@ export interface AddReactionInput {
 export interface AddReactionOutput {
   readonly room_exists: boolean;
   readonly socket_was_in_room: boolean;
+  readonly reactions: readonly MessageReaction[];
 }
 
 /**
@@ -59,8 +61,16 @@ export const add_reaction = (
     void socket.join(input.conversation_id);
   }
   
+  const reactions = storage_service.toggle_message_reaction(
+    input.conversation_id,
+    input.message_index,
+    input.emoji,
+    input.socket_id
+  );
+
   return {
     room_exists,
-    socket_was_in_room
+    socket_was_in_room,
+    reactions
   };
 };

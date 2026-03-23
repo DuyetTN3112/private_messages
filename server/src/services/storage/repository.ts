@@ -25,6 +25,12 @@ export interface Message {
   readonly sender: string;
   readonly content: string;
   readonly created_at: Date;
+  reactions: MessageReaction[];
+}
+
+export interface MessageReaction {
+  readonly emoji: string;
+  readonly sender_id: string;
 }
 
 export interface StorageStats {
@@ -159,6 +165,7 @@ export class StorageService {
       sender,
       content,
       created_at: new Date(),
+      reactions: [],
     };
 
     // Store message
@@ -171,6 +178,60 @@ export class StorageService {
     this.update_conversation_activity(conversation_id);
 
     return message;
+  }
+
+  /**
+   * Toggle a reaction for a specific message by participant.
+   * Returns the updated reactions list for that message.
+   */
+  toggle_message_reaction(
+    conversation_id: string,
+    message_index: number,
+    emoji: string,
+    sender_id: string
+  ): readonly MessageReaction[] {
+    const conversation = this.conversations.get(conversation_id);
+    if (!conversation) {
+      throw new Error(`Conversation ${conversation_id} not found`);
+    }
+
+    if (!conversation.is_active) {
+      throw new Error(`Conversation ${conversation_id} is not active`);
+    }
+
+    if (!conversation.participants.includes(sender_id)) {
+      throw new Error(`Sender ${sender_id} is not a participant in conversation ${conversation_id}`);
+    }
+
+    const conversation_messages = this.messages.get(conversation_id);
+    if (!conversation_messages) {
+      throw new Error(`No messages found for conversation ${conversation_id}`);
+    }
+
+    if (message_index < 0 || message_index >= conversation_messages.length) {
+      throw new Error(`Message index ${String(message_index)} is out of range`);
+    }
+
+    const message = conversation_messages[message_index];
+    if (!message) {
+      throw new Error(`Message at index ${String(message_index)} not found`);
+    }
+
+    const has_reaction = message.reactions.some(
+      (reaction) => reaction.emoji === emoji && reaction.sender_id === sender_id
+    );
+
+    if (has_reaction) {
+      message.reactions = message.reactions.filter(
+        (reaction) => !(reaction.emoji === emoji && reaction.sender_id === sender_id)
+      );
+    } else {
+      message.reactions = [...message.reactions, { emoji, sender_id }];
+    }
+
+    this.update_conversation_activity(conversation_id);
+
+    return message.reactions;
   }
 
   /**

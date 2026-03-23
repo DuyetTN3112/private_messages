@@ -19,6 +19,7 @@ export default ts.config(
   },
   {
     files: ['**/*.ts'],
+    extends: [...ts.configs.strictTypeChecked],
     languageOptions: {
       parser: ts.parser,
       parserOptions: {
@@ -30,6 +31,7 @@ export default ts.config(
       /* === STRICT TYPESCRIPT RULES (type-aware) === */
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/explicit-function-return-type': 'error',
+      '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
@@ -47,8 +49,10 @@ export default ts.config(
       '@typescript-eslint/no-unsafe-return': 'error',
       '@typescript-eslint/no-unsafe-call': 'error',
       '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
       '@typescript-eslint/no-deprecated': 'warn',
-      
+
       /* === GENERAL STRICT RULES === */
       'no-console': 'off',
       'no-debugger': 'error',
@@ -68,7 +72,7 @@ export default ts.config(
       }
     },
     rules: {
-      // Svelte files - basic rules only (no type-aware rules)
+      // Svelte files - NO type-aware rules, basic rules only
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',

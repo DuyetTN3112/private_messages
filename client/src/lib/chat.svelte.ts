@@ -1,12 +1,13 @@
 import { socket } from '../socket';
 import { tick } from 'svelte';
 import { validate_message, sanitize_message } from '../utils/validators';
+import { toggle_reaction_for_user, type MessageReaction } from './reaction-utils';
 
 export interface Message {
   sender_id: string;
   content: string;
-  created_at?: string;
-  reactions?: string[];
+  created_at: string;
+  reactions: MessageReaction[];
 }
 
 interface MatchedData {
@@ -89,27 +90,34 @@ export class ChatState {
   };
 
   addReaction = (msg: Message, emoji: string): void => {
+    if (!this.socket_id) {
+      return;
+    }
+
     const msgIndex = this.messages.indexOf(msg);
     if (msgIndex !== -1) {
-      // Create a shallow copy of the message to trigger reactivity
-      const currentMsg = { ...this.messages[msgIndex] };
-      currentMsg.reactions ??= [];
-      
-      if (currentMsg.reactions.includes(emoji)) {
-        currentMsg.reactions = currentMsg.reactions.filter((r) => r !== emoji);
-      } else {
-        currentMsg.reactions = [...currentMsg.reactions, emoji];
-      }
-      
+      const originalMsg = this.messages[msgIndex];
+      if (originalMsg === undefined) return;
+
+      // Create a properly typed copy
+      const currentMsg: Message = {
+        sender_id: originalMsg.sender_id,
+        content: originalMsg.content,
+        created_at: originalMsg.created_at,
+        reactions: [...originalMsg.reactions]
+      };
+
+      currentMsg.reactions = toggle_reaction_for_user(currentMsg.reactions, emoji, this.socket_id);
+
       // Reassign to array to trigger update
       this.messages[msgIndex] = currentMsg;
-      
-      socket.emit('add-reaction', { 
+
+      socket.emit('add-reaction', {
         conversation_id: this.conversation_id,
         message_index: msgIndex,
         emoji
       });
-      
+
       this.showToast(`Đã thả cảm xúc ${emoji}`, 2000);
     }
     this.reactionPickerMessage = null;
@@ -171,40 +179,33 @@ export class ChatState {
       }, 3000);
     });
 
-    socket.on('receive-message', (msg: { sender?: string; sender_id?: string; content: string; created_at: string }) => {
+    socket.on('receive-message', (msg: { sender?: string; sender_id?: string; content: string; created_at: string; reactions?: MessageReaction[] }) => {
       this.messages = [...this.messages, {
         sender_id: msg.sender ?? msg.sender_id ?? '',
         content: msg.content,
         created_at: msg.created_at,
-        reactions: []
+        reactions: msg.reactions ?? []
       }];
       void this.scrollToBottom();
     });
 
-    socket.on('receive-reaction', (data: {message_index: number, emoji: string, sender_id: string}) => {
-      const { message_index, emoji, sender_id } = data;
-      
-      // If I sent the reaction, my optimistic UI already handled it.
-      // Ignoring the server echo prevents double-toggling.
-      if (sender_id === this.socket_id) {
-        return;
-      }
+    socket.on('receive-reaction', (data: {message_index: number, reactions: MessageReaction[]}) => {
+      const { message_index, reactions } = data;
 
       if (message_index >= 0 && message_index < this.messages.length) {
-        // Clone message for reactivity
-        const msg = { ...this.messages[message_index] };
-        msg.reactions ??= [];
-        
-        if (msg.reactions.includes(emoji)) {
-          msg.reactions = msg.reactions.filter(r => r !== emoji);
-        } else {
-          msg.reactions = [...msg.reactions, emoji];
+        const current = this.messages[message_index];
+        if (current === undefined) {
+          return;
         }
-        this.messages[message_index] = msg;
 
-        if (sender_id !== this.socket_id) {
-          this.showToast(`Có người đã thả cảm xúc ${emoji}`, 2000);
-        }
+        // Clone message for reactivity
+        const msg: Message = {
+          sender_id: current.sender_id,
+          content: current.content,
+          created_at: current.created_at,
+          reactions: [...reactions]
+        };
+        this.messages[message_index] = msg;
       }
     });
 

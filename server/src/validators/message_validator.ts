@@ -13,6 +13,11 @@ import {
 const URL_REGEX = /(@?https?:\/\/[^\s]+)/gi;
 
 /**
+ * Chặn các URI scheme nguy hiểm trong tin nhắn người dùng
+ */
+const DANGEROUS_PROTOCOL_REGEX = /(?:^|\s)(?:javascript|vbscript|data|file)\s*:/iu;
+
+/**
  * Regex kiểm tra ký tự hợp lệ
  */
 const VALID_CHARS_REGEX = /^[\p{L}\p{N}\p{P}\p{Zs}\p{So}\p{Mn}\p{Mc}]+$/u;
@@ -193,6 +198,10 @@ export const validate_message = (message: string): void => {
   
   if (message.trim().length === 0) {
     throw new ApiError('Tin nhắn không được để trống', 400);
+  }
+
+  if (DANGEROUS_PROTOCOL_REGEX.test(message)) {
+    throw new ApiError('Tin nhắn chứa nội dung không an toàn', 400);
   }
   
   const combining_analysis = analyze_combining_marks(message);

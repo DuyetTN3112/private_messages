@@ -1,5 +1,6 @@
 <script lang="ts">
   import { chatState, type Message } from '$lib/chat.svelte';
+  import { summarize_reactions_by_emoji } from '$lib/reaction-utils';
   import { User, Smile } from 'lucide-svelte';
 
   interface Props {
@@ -10,6 +11,10 @@
   const { msg, index }: Props = $props();
 
   const isMe = $derived(msg.sender_id === chatState.socket_id);
+
+  const reactionSummary = $derived.by(() => {
+    return summarize_reactions_by_emoji(msg.reactions);
+  });
   
   // Format content to linkify URLs
   const formattedContent = $derived.by(() => {
@@ -57,17 +62,17 @@
       </button>
     </div>
 
-    {#if msg.reactions && msg.reactions.length > 0}
+    {#if msg.reactions.length > 0}
       <div class="reactions-display" class:is-me={isMe}>
-        {#each msg.reactions as reaction (reaction)}
+        {#each reactionSummary as reactionItem (`${reactionItem.emoji}-${reactionItem.count}`)}
           <div
             class="reaction-item hover-scale"
             role="button"
             tabindex="0"
-            onclick={() => chatState.addReaction(msg, reaction)}
-            onkeydown={(e) => e.key === 'Enter' && chatState.addReaction(msg, reaction)}
+            onclick={() => chatState.addReaction(msg, reactionItem.emoji)}
+            onkeydown={(e) => e.key === 'Enter' && chatState.addReaction(msg, reactionItem.emoji)}
           >
-            {reaction}
+            {reactionItem.emoji}{reactionItem.count > 1 ? ` ${reactionItem.count}` : ''}
           </div>
         {/each}
       </div>

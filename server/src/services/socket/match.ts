@@ -28,13 +28,13 @@ export interface MatchUsersOutput {
 export const match_users = (
   input: MatchUsersInput
 ): MatchUsersOutput => {
-  logger.info(`Matching users ${input.user1_socket_id} and ${input.user2_socket_id}`);
+  logger.debug(`Matching users ${input.user1_socket_id} and ${input.user2_socket_id}`);
   
   const result = create_conversation_usecase({
     participants: [input.user1_socket_id, input.user2_socket_id] as const
   });
   
-  logger.info(`Successfully matched users into conversation ${result.conversation.id}`);
+  logger.debug(`Successfully matched users into conversation ${result.conversation.id}`);
   
   return { conversation: result.conversation };
 };

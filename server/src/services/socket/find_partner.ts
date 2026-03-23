@@ -10,6 +10,7 @@ import { update_user_state } from './user_state_broadcaster';
 import { SERVER_EVENTS } from '../../constants/socket';
 
 export const waiting_queue: Socket[] = [];
+const waiting_socket_ids = new Set<string>();
 
 export interface FindPartnerInput {
   readonly socket: Socket;
@@ -23,30 +24,28 @@ export interface FindPartnerOutput {
 
 export const find_partner = (input: FindPartnerInput): FindPartnerOutput => {
   const { socket, io, socket_store } = input;
-  
-  logger.info(`Người dùng mới kết nối: ${socket.id}`);
-  
-  if (waiting_queue.find(s => s.id === socket.id)) {
+
+  if (waiting_socket_ids.has(socket.id)) {
     return { added_to_queue: false };
   }
 
   waiting_queue.push(socket);
+  waiting_socket_ids.add(socket.id);
   socket.emit(SERVER_EVENTS.WAITING);
-  
+
   update_user_state(socket.id, 'waiting', io, socket_store);
-  
-  logger.info(`Đã thêm người dùng ${socket.id} vào hàng đợi. Tổng số người đang chờ: ${String(waiting_queue.length)}`);
-  
+
   match_all_waiting_users(io, socket_store);
-  
+
   return { added_to_queue: true };
 };
 
 export const remove_from_waiting_queue = (socket_id: string): boolean => {
+  waiting_socket_ids.delete(socket_id);
+
   const index = waiting_queue.findIndex(s => s.id === socket_id);
   if (index !== -1) {
     waiting_queue.splice(index, 1);
-    logger.info(`Đã xóa người dùng ${socket_id} khỏi hàng đợi`);
     return true;
   }
   return false;
@@ -56,7 +55,6 @@ const match_all_waiting_users = (
   io: Server, 
   socket_store: Record<string, 'waiting' | 'matched' | null>
 ): void => {
-  logger.debug(`Bắt đầu ghép đôi tất cả người dùng. Hàng đợi hiện có ${String(waiting_queue.length)} người.`);
   let matched_count = 0;
   
   while (waiting_queue.length >= 2) {
@@ -64,9 +62,18 @@ const match_all_waiting_users = (
     const socket2 = waiting_queue.shift();
     
     if (socket1 && socket2) {
+      waiting_socket_ids.delete(socket1.id);
+      waiting_socket_ids.delete(socket2.id);
+
       if (!socket1.connected || !socket2.connected) {
-        if (socket1.connected) waiting_queue.unshift(socket1);
-        if (socket2.connected) waiting_queue.unshift(socket2);
+        if (socket1.connected) {
+          waiting_queue.unshift(socket1);
+          waiting_socket_ids.add(socket1.id);
+        }
+        if (socket2.connected) {
+          waiting_queue.unshift(socket2);
+          waiting_socket_ids.add(socket2.id);
+        }
         continue;
       }
 
@@ -75,11 +82,13 @@ const match_all_waiting_users = (
         matched_count++;
       } else {
         waiting_queue.unshift(socket2, socket1);
+        waiting_socket_ids.add(socket1.id);
+        waiting_socket_ids.add(socket2.id);
         break;
       }
     }
   }
-  
+
   if (matched_count > 0) {
     logger.debug(`Đã ghép đôi ${String(matched_count)} cặp. Còn lại ${String(waiting_queue.length)} người đang chờ.`);
   }

@@ -17,12 +17,12 @@ export const update_user_stats = (io: Server): void => {
 };
 
 /**
- * Update user state in store and trigger stats broadcast
+ * Update user state in store
  */
 export const update_user_state = (
   socket_id: string, 
   state: 'waiting' | 'matched' | null, 
-  io: Server, 
+  _io: Server,
   socket_store: SocketStore
 ): void => {
   if (state === null) {
@@ -31,5 +31,4 @@ export const update_user_state = (
   } else {
     socket_store[socket_id] = state;
   }
-  update_user_stats(io);
 };

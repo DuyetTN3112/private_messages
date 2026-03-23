@@ -3,6 +3,9 @@
  * Shared between client and server
  */
 
+// Socket server URL
+export const SOCKET_SERVER_URL = 'http://localhost:3000';
+
 // Client -> Server events
 export const SOCKET_EVENTS = {
   CONNECT: 'connect',
